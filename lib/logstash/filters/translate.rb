@@ -178,7 +178,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       else 
         translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
         if source != translation
-          event[@destination] = translation
+          event[@destination] = translation.force_encoding(Encoding::UTF_8)
           matched = true
         end
       end
