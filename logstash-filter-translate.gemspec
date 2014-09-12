@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-filter-translate'
-  s.version         = '0.1.3'
+  s.version         = '0.1.4'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "A general search and replace tool which uses a configured hash and/or a YAML file to determine replacement values."
   s.description     = "A general search and replace tool which uses a configured hash and/or a YAML file to determine replacement values."
