@@ -1,8 +1,8 @@
-require "test_utils"
+require "spec_helper"
 require "logstash/filters/translate"
 
 describe LogStash::Filters::Translate do
-  extend LogStash::RSpec
+  
 
   describe "exact translation" do
     config <<-CONFIG
