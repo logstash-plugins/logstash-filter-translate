@@ -67,4 +67,36 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  describe "fallback value - static configuration" do
+    config <<-CONFIG
+      filter {
+        translate {
+          field       => "status"
+          destination => "translation"
+          fallback => "no match"
+        }
+      }
+    CONFIG
+
+    sample("status" => "200") do
+      insist { subject["translation"] } == "no match"
+    end
+  end
+
+  describe "fallback value - allow sprintf" do
+    config <<-CONFIG
+      filter {
+        translate {
+          field       => "status"
+          destination => "translation"
+          fallback => "%{missing_translation}"
+        }
+      }
+    CONFIG
+
+    sample("status" => "200", "missing_translation" => "no match") do
+      insist { subject["translation"] } == "no match"
+    end
+  end
+
 end
