@@ -70,6 +70,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   # The full URI path of a Web service who generates an yml format response. 
   # The response generated needs to be equals than needed for @dictionary_path
+  #
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path` or `dictionary_url`
   config :dictionary_url, :validate => :string
 
   # Filename (without extension) where .yml will be stored from a Web service.
@@ -130,9 +132,6 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
     if @dictionary_url
       @next_refresh = Time.now + @refresh_interval
-      registering = true
-      @logger.warn(@dictionary_url)
-      @logger.warn(@file_to_download)
       download_yaml(@dictionary_url,@file_to_download)
     end
     
