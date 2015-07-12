@@ -121,6 +121,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # Then, if logstash received an event with the field `foo` set to `bar`, the destination
   # field would be set to `bar`. However, if logstash received an event with `foo` set to `nope`,
   # then the destination field would still be populated, but with the value of `no match`.
+  # This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
   config :fallback, :validate => :string
 
   public
@@ -223,7 +224,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       end
 
       if not matched and @fallback
-        event[@destination] = @fallback
+        event[@destination] = event.sprintf(@fallback)
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
