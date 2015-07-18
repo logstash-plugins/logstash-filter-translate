@@ -1,5 +1,7 @@
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
+require "webmock/rspec"
+WebMock.disable_net_connect!(allow_localhost: true)
 
 describe LogStash::Filters::Translate do
   
@@ -81,6 +83,35 @@ describe LogStash::Filters::Translate do
     sample("status" => "200") do
       insist { subject["translation"] } == "no match"
     end
+  end
+  
+  describe "webserver translation" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+              file_to_download => "foo"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+          config.before(:each) do
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+'200': OK\n\
+'300': Redirect\n\
+'400': Client Error\n\
+'500': Server Error", :headers => {})
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OK"
+      end
   end
 
   describe "fallback value - allow sprintf" do
