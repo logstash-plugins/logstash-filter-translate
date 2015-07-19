@@ -99,6 +99,7 @@ describe LogStash::Filters::Translate do
       
       RSpec.configure do |config|
           config.before(:each) do
+              FileUtils.rm_rf('foo.yml')
               stub_request(:get, "http://dummyurl/").
               with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
               to_return(:status => 200, :body => "\
@@ -114,6 +115,115 @@ describe LogStash::Filters::Translate do
       
       sample("status" => "200") do
           insist { subject["translation"] } == "OK"
+      end
+  end
+  
+  describe "webserver translation existing YML" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+              file_to_download => "foo"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+          config.before(:each) do
+              FileUtils.rm_rf('foo.yml')
+              File.open('foo.yml', 'wb') { |f| f.write("\
+                                                       '200': OKF\n\
+                                                       '300': Redirect\n\
+                                                       '400': Client Error\n\
+                                                       '500': Server Error") }
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400': Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf('foo.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OK"
+      end
+  end
+  
+  describe "webserver translation not valid" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+              file_to_download => "foo"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+          config.before(:each) do
+              FileUtils.rm_rf('foo.yml')
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400', Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf('foo.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == nil
+      end
+  end
+  
+  describe "webserver translation not valid existing YML" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+              file_to_download => "foo"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+          config.before(:each) do
+              FileUtils.rm_rf('foo.yml')
+              File.open('foo.yml', 'wb') { |f| f.write("\
+                                                       '200': OKF\n\
+                                                       '300': Redirect\n\
+                                                       '400': Client Error\n\
+                                                       '500': Server Error") }
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400', Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf('foo.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OKF"
       end
   end
 

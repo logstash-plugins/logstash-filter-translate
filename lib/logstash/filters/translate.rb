@@ -126,14 +126,14 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   public
   def register
+    registering = true
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
-      registering = true
       load_yaml(registering)
     end
     if @dictionary_url
       @next_refresh = Time.now + @refresh_interval
-      download_yaml(@dictionary_url,@file_to_download)
+      download_yaml(@dictionary_url,@file_to_download,registering)
     end
     
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -145,14 +145,17 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end # def register
 
   private
-  def load_file(registering,fileName)
+  def load_file(registering,fileName,yamlData=nil)
     if !File.exists?(fileName)
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => fileName)
       return
     end
 
     begin
-      @dictionary.merge!(YAML.load_file(fileName))
+      if yamlData==nil
+        yamlData = YAML.load_file(fileName)
+      end
+      @dictionary.merge!(yamlData)
     rescue Exception => e
       if registering
         raise "#{self.class.name}: Bad Syntax in dictionary file #{fileName}"
@@ -168,13 +171,24 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end # def load_yaml
 
   public
-  def download_yaml(path,filename)
-    File.open(filename+".yml", "wb") do |saved_file|
+  def download_yaml(path,filename,registering=false)
+    File.open(filename+"_temp.yml", "wb") do |saved_file|
       open(path, "rb") do |read_file|
         saved_file.write(read_file.read)
       end
     end
-    load_file(true,filename+".yml")
+    rename = true
+    begin
+        yamlData = YAML.load_file(filename+"_temp.yml")
+    rescue Exception => e
+        rename = false
+    end
+    if rename
+        FileUtils.mv(filename+"_temp.yml", filename+".yml")
+    else
+        FileUtils.rm_rf(filename+"_temp.yml")
+    end
+    load_file(registering,filename+".yml",yamlData)
   end # def download_yaml
 
   public
