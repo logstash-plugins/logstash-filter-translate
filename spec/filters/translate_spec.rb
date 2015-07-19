@@ -102,10 +102,13 @@ describe LogStash::Filters::Translate do
               stub_request(:get, "http://dummyurl/").
               with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
               to_return(:status => 200, :body => "\
-'200': OK\n\
-'300': Redirect\n\
-'400': Client Error\n\
-'500': Server Error", :headers => {})
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400': Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf('foo.yml')
           end
       end
       
