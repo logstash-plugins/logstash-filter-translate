@@ -26,7 +26,6 @@ require "logstash/namespace"
 
 class LogStash::Filters::Translate < LogStash::Filters::Base
   config_name "translate"
-  milestone 1
 
   # The name of the logstash event field containing the value to be compared for a
   # match by the translate filter (e.g. `message`, `host`, `response_code`). 
