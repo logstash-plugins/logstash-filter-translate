@@ -3,100 +3,120 @@ require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
 
 describe LogStash::Filters::Translate do
-  
+
+  let(:config) { Hash.new }
+  subject { described_class.new(config) }
 
   describe "exact translation" do
-    config <<-CONFIG
-      filter {
-        translate {
-          field       => "status"
-          destination => "translation"
-          dictionary  => [ "200", "OK",
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "200", "OK",
                            "300", "Redirect",
                            "400", "Client Error",
-                           "500", "Server Error" ]
-          exact       => true
-          regex       => false
-        }
+                           "500", "Server Error" ],
+                           "exact"       => true,
+                           "regex"       => false
       }
-    CONFIG
+    end
 
-    sample("status" => 200) do
-      insist { subject["translation"] } == "OK"
+    let(:event) { LogStash::Event.new("status" => 200) }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("OK")
     end
   end
 
+
   describe "multi translation" do
-    config <<-CONFIG
-      filter {
-        translate {
-          field       => "status"
-          destination => "translation"
-          dictionary  => [ "200", "OK",
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "200", "OK",
                            "300", "Redirect",
                            "400", "Client Error",
-                          "500", "Server Error" ]
-          exact       => false
-          regex       => false
-        }
+                           "500", "Server Error" ],
+                           "exact"       => false,
+                           "regex"       => false
       }
-    CONFIG
-
-    sample("status" => "200 & 500") do
-      insist { subject["translation"] } == "OK & Server Error"
     end
+
+    let(:event) { LogStash::Event.new("status" => "200 & 500") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("OK & Server Error")
+    end
+
   end
 
   describe "regex translation" do
-    config <<-CONFIG
-      filter {
-        translate {
-          field       => "status"
-          destination => "translation"
-          dictionary  => [ "^2[0-9][0-9]$", "OK",
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "^2[0-9][0-9]$", "OK",
                            "^3[0-9][0-9]$", "Redirect",
                            "^4[0-9][0-9]$", "Client Error",
-                           "^5[0-9][0-9]$", "Server Error" ]
-          exact       => true
-          regex       => true
-        }
+                           "^5[0-9][0-9]$", "Server Error" ],
+        "exact"       => true,
+        "regex"       => true
       }
-    CONFIG
+    end
 
-    sample("status" => "200") do
-      insist { subject["translation"] } == "OK"
+    let(:event) { LogStash::Event.new("status" => "200") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("OK")
     end
   end
 
-  describe "fallback value - static configuration" do
-    config <<-CONFIG
-      filter {
-        translate {
-          field       => "status"
-          destination => "translation"
-          fallback => "no match"
-        }
-      }
-    CONFIG
+  describe "fallback value" do
 
-    sample("status" => "200") do
-      insist { subject["translation"] } == "no match"
+    context "static configuration" do
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "fallback" => "no match"
+        }
+      end
+
+      let(:event) { LogStash::Event.new("status" => "200") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event["translation"]).to eq("no match")
+      end
     end
-  end
 
-  describe "fallback value - allow sprintf" do
-    config <<-CONFIG
-      filter {
-        translate {
-          field       => "status"
-          destination => "translation"
-          fallback => "%{missing_translation}"
+    context "allow sprintf" do
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "fallback" => "%{missing_translation}"
         }
-      }
-    CONFIG
+      end
 
-    sample("status" => "200", "missing_translation" => "no match") do
-      insist { subject["translation"] } == "no match"
+      let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event["translation"]).to eq("missing no match")
+      end
     end
   end
 
