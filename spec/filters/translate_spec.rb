@@ -120,4 +120,58 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  describe "loading a dictionary" do
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary_path"  => dictionary_path,
+        "exact"       => true,
+        "regex"       => false
+      }
+    end
+
+    let(:event) { LogStash::Event.new("status" => "a") }
+
+    context "when using a yml file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event["translation"]).to eq(1)
+      end
+    end
+
+    context "when using a json file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.json") }
+      let(:event) { LogStash::Event.new("status" => "b") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event["translation"]).to eq(20)
+      end
+    end
+
+    context "when using a csv file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.csv") }
+      let(:event) { LogStash::Event.new("status" => "c") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event["translation"]).to eq("300")
+      end
+    end
+
+    context "when using an uknown file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.other") }
+
+      it "return the exact translation" do
+        expect { subject.register }.to raise_error(RuntimeError, /Dictionary #{dictionary_path} have a non valid format/)
+      end
+    end
+  end
 end

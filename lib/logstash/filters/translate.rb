@@ -1,13 +1,16 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
+require "json"
+require "csv"
 
 # A general search and replace tool which uses a configured hash
-# and/or a YAML file to determine replacement values.
+# and/or a file to determine replacement values. Currently supported are 
+# YAML, JSON and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
 # the `dictionary` configuration item may contain a hash representing
-# the mapping. Second, an external YAML file (readable by logstash) may be specified
+# the mapping. Second, an external file (readable by logstash) may be specified
 # in the `dictionary_path` configuration item. These two methods may not be used
 # in conjunction; it will produce an error.
 #
@@ -39,7 +42,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config :override, :validate => :boolean, :default => false
 
   # The dictionary to use for translation, when specified in the logstash filter
-  # configuration item (i.e. do not use the `@dictionary_path` YAML file)
+  # configuration item (i.e. do not use the `@dictionary_path` file)
   # Example:
   # [source,ruby]
   #     filter {
@@ -53,20 +56,23 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
   config :dictionary, :validate => :hash,  :default => {}
 
-  # The full path of the external YAML dictionary file. The format of the table
-  # should be a standard YAML file. Make sure you specify any integer-based keys
-  # in quotes. The YAML file should look something like this:
+  # The full path of the external dictionary file. The format of the table
+  # should be a standard YAML, JSON or CSV. Make sure you specify any integer-based keys
+  # in quotes. For example, the YAML file should look something like this:
   # [source,ruby]
   #     "100": Continue
   #     "101": Switching Protocols
   #     merci: gracias
   #     old version: new version
-  #     
+  # 
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
+  # NOTE: Currently supported formats are YAML, JSON and CSV, format selection is
+  # based on the file extension, json for json, (yaml|yml) for YAML and csv for CSV.
+  # NOTE: Important to use equivalent formtats for JSON and CSV, only simple hash are used for now.
   config :dictionary_path, :validate => :path
 
   # When using a dictionary file, this setting will indicate how frequently
-  # (in seconds) logstash will check the YAML file for updates.
+  # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
   
   # The destination field you wish to populate with the translated code. The default
@@ -117,9 +123,17 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       registering = true
-      load_yaml(registering)
+      if /.y[a]?ml$/.match(@dictionary_path)
+        load_yaml(registering)
+      elsif @dictionary_path.end_with?(".json")
+        load_json(registering)
+      elsif @dictionary_path.end_with?(".csv")
+        load_csv(registering)
+      else
+        raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
+      end
     end
-    
+
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
     if @exact
       @logger.debug? and @logger.debug("#{self.class.name}: Dictionary translation method - Exact")
@@ -137,13 +151,56 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
     begin
       @dictionary.merge!(YAML.load_file(@dictionary_path))
-    rescue Exception => e
+    rescue => e
       if registering
         raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path}"
       else
         @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
     end
+  end
+
+  public
+  def load_json(registering=false)
+    if !File.exists?(@dictionary_path)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+      return
+    end
+
+    begin
+      @dictionary.merge!(JSON.parse(File.read(@dictionary_path)))
+
+    rescue  => e
+      if registering
+        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
+      else
+        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
+      end
+    end
+
+  end
+
+  public
+  def load_csv(registering=false)
+    if !File.exists?(@dictionary_path)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+      return
+    end
+
+    begin
+      dictionary = CSV.read(@dictionary_path).inject(Hash.new) do |acc, v|
+        acc[v[0]] = v[1]
+        acc
+      end
+      @dictionary.merge!(dictionary)
+    rescue  => e
+      if registering
+        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
+      else
+        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
+      end
+    end
+
   end
 
   public
