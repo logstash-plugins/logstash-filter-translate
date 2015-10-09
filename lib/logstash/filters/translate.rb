@@ -76,7 +76,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
-  
+
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
   # to do a substitution, in this case filter will allways succeed. This will clobber
@@ -94,7 +94,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #
   # If logstash receives an event with the `data` field set to `foo`, and `exact => true`,
   # the destination field will be populated with the string `bar`.
-  
+
   # If `exact => false`, and logstash receives the same event, the destination field
   # will be also set to `bar`. However, if logstash receives an event with the `data` field
   # set to `foofing`, the destination field will be set to `barfing`.
@@ -225,11 +225,12 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   def merge_dictionary!(data, raise_exception=false)
     begin
       @dictionary.merge!(data)
-    rescue  => e
+    rescue  Exception => e
+      msg = "#{self.class.name}: #{e.message} when loading dictionary file at #{@dictionary_path}"
       if raise_exception
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
+        raise RuntimeError.new(msg)
       else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
+        @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
     end
   end

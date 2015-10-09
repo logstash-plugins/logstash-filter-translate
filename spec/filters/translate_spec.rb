@@ -122,6 +122,8 @@ describe LogStash::Filters::Translate do
 
   describe "loading a dictionary" do
 
+    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict-wrong.yml") }
+
     let(:config) do
       {
         "field"       => "status",
@@ -132,10 +134,13 @@ describe LogStash::Filters::Translate do
       }
     end
 
-    let(:event) { LogStash::Event.new("status" => "a") }
+    it "return the exact translation" do
+      expect { subject.register }.to raise_error("#{described_class}: can't convert String into Hash when loading dictionary file at #{dictionary_path}")
+    end
 
     context "when using a yml file" do
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+      let(:event) { LogStash::Event.new("status" => "a") }
 
       it "return the exact translation" do
         subject.register
