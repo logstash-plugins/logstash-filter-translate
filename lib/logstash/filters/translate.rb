@@ -118,20 +118,11 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
   config :fallback, :validate => :string
 
-  public
   def register
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       registering = true
-      if /.y[a]?ml$/.match(@dictionary_path)
-        load_yaml(registering)
-      elsif @dictionary_path.end_with?(".json")
-        load_json(registering)
-      elsif @dictionary_path.end_with?(".csv")
-        load_csv(registering)
-      else
-        raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
-      end
+      load_dictionary(registering)
     end
 
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -142,79 +133,15 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end # def register
 
-  public
-  def load_yaml(registering=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-
-    begin
-      @dictionary.merge!(YAML.load_file(@dictionary_path))
-    rescue => e
-      if registering
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path}"
-      else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
-      end
-    end
-  end
-
-  public
-  def load_json(registering=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-
-    begin
-      @dictionary.merge!(JSON.parse(File.read(@dictionary_path)))
-
-    rescue  => e
-      if registering
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
-      else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
-      end
-    end
-
-  end
-
-  public
-  def load_csv(registering=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-
-    begin
-      dictionary = CSV.read(@dictionary_path).inject(Hash.new) do |acc, v|
-        acc[v[0]] = v[1]
-        acc
-      end
-      @dictionary.merge!(dictionary)
-    rescue  => e
-      if registering
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
-      else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
-      end
-    end
-
-  end
-
-  public
   def filter(event)
-    
-
     if @dictionary_path
       if @next_refresh < Time.now
-        load_yaml
+        load_dictionary
         @next_refresh = Time.now + @refresh_interval
         @logger.info("refreshing dictionary file")
       end
     end
-    
+
     return unless event.include?(@field) # Skip translation in case event does not have @event field.
     return if event.include?(@destination) and not @override # Skip translation in case @destination field already exists and @override is disabled.
 
@@ -250,4 +177,58 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
   end # def filter
+
+  private
+
+  def load_dictionary(registering=false)
+    if /.y[a]?ml$/.match(@dictionary_path)
+      load_yaml(registering)
+    elsif @dictionary_path.end_with?(".json")
+      load_json(registering)
+    elsif @dictionary_path.end_with?(".csv")
+      load_csv(registering)
+    else
+      raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
+    end
+  end
+
+  def load_yaml(registering=false)
+    if !File.exists?(@dictionary_path)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+      return
+    end
+    merge_dictionary!(YAML.load_file(@dictionary_path), registering)
+  end
+
+  def load_json(registering=false)
+    if !File.exists?(@dictionary_path)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+      return
+    end
+    merge_dictionary!(JSON.parse(File.read(@dictionary_path)), registering)
+  end
+
+  def load_csv(registering=false)
+    if !File.exists?(@dictionary_path)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+      return
+    end
+    data = CSV.read(@dictionary_path).inject(Hash.new) do |acc, v|
+      acc[v[0]] = v[1]
+      acc
+    end
+    merge_dictionary!(data, registering)
+  end
+
+  def merge_dictionary!(data, registering=false)
+    begin
+      @dictionary.merge!(data)
+    rescue  => e
+      if registering
+        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
+      else
+        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
+      end
+    end
+  end
 end # class LogStash::Filters::Translate
