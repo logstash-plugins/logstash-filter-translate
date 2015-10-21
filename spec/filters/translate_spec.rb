@@ -2,6 +2,7 @@
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
 require "webmock/rspec"
+require 'digest/sha1'
 WebMock.disable_net_connect!(allow_localhost: true)
 
 describe LogStash::Filters::Translate do
@@ -111,14 +112,14 @@ describe LogStash::Filters::Translate do
               field       => "status"
               destination => "translation"
               dictionary_url  => "http://dummyurl/"
-              file_to_download => "foo"
           }
       }
       CONFIG
       
       RSpec.configure do |config|
+          hash = Digest::SHA1.hexdigest 'http://dummyurl/'
           config.before(:each) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
               stub_request(:get, "http://dummyurl/").
               with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
               to_return(:status => 200, :body => "\
@@ -128,7 +129,7 @@ describe LogStash::Filters::Translate do
                         '500': Server Error", :headers => {})
           end
           config.after(:all) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
           end
       end
       
@@ -144,15 +145,15 @@ describe LogStash::Filters::Translate do
               field       => "status"
               destination => "translation"
               dictionary_url  => "http://dummyurl/"
-              file_to_download => "foo"
           }
       }
       CONFIG
       
       RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
           config.before(:each) do
-              FileUtils.rm_rf('foo.yml')
-              File.open('foo.yml', 'wb') { |f| f.write("\
+              FileUtils.rm_rf(hash+'.yml')
+              File.open(hash+'.yml', 'wb') { |f| f.write("\
                                                        '200': OKF\n\
                                                        '300': Redirect\n\
                                                        '400': Client Error\n\
@@ -166,7 +167,7 @@ describe LogStash::Filters::Translate do
                         '500': Server Error", :headers => {})
           end
           config.after(:all) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
           end
       end
       
@@ -182,14 +183,14 @@ describe LogStash::Filters::Translate do
               field       => "status"
               destination => "translation"
               dictionary_url  => "http://dummyurl/"
-              file_to_download => "foo"
           }
       }
       CONFIG
       
       RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
           config.before(:each) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
               stub_request(:get, "http://dummyurl/").
               with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
               to_return(:status => 200, :body => "\
@@ -199,7 +200,7 @@ describe LogStash::Filters::Translate do
                         '500': Server Error", :headers => {})
           end
           config.after(:all) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
           end
       end
       
@@ -215,15 +216,15 @@ describe LogStash::Filters::Translate do
               field       => "status"
               destination => "translation"
               dictionary_url  => "http://dummyurl/"
-              file_to_download => "foo"
           }
       }
       CONFIG
       
       RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
           config.before(:each) do
-              FileUtils.rm_rf('foo.yml')
-              File.open('foo.yml', 'wb') { |f| f.write("\
+              FileUtils.rm_rf(hash+'.yml')
+              File.open(hash+'.yml', 'wb') { |f| f.write("\
                                                        '200': OKF\n\
                                                        '300': Redirect\n\
                                                        '400': Client Error\n\
@@ -237,7 +238,7 @@ describe LogStash::Filters::Translate do
                         '500': Server Error", :headers => {})
           end
           config.after(:all) do
-              FileUtils.rm_rf('foo.yml')
+              FileUtils.rm_rf(hash+'.yml')
           end
       end
       
@@ -263,6 +264,4 @@ describe LogStash::Filters::Translate do
         expect(event["translation"]).to eq("missing no match")
       end
     end
-  end
-
 end

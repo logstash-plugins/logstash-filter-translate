@@ -2,6 +2,7 @@
 require "logstash/filters/base"
 require "logstash/namespace"
 require "open-uri"
+require 'digest/sha1'
 
 # A general search and replace tool which uses a configured hash
 # and/or a YAML file or a Web service with a YAML response to determine replacement values.
@@ -74,9 +75,6 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path` or `dictionary_url`
   config :dictionary_url, :validate => :string
 
-  # Filename (without extension) where .yml will be stored from a Web service.
-  config :file_to_download, :validate => :string, :default => "dictionary"
-
   # When using a dictionary file or url, this setting will indicate how frequently
   # (in seconds) logstash will check the YAML file or url for updates.
   config :refresh_interval, :validate => :number, :default => 300
@@ -133,7 +131,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
     if @dictionary_url
       @next_refresh = Time.now + @refresh_interval
-      download_yaml(@dictionary_url,@file_to_download,registering)
+      download_yaml(@dictionary_url,registering)
     end
     
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -171,7 +169,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end # def load_yaml
 
   public
-  def download_yaml(path,filename,registering=false)
+  def download_yaml(path,registering=false)
+    filename = Digest::SHA1.hexdigest path;
     File.open(filename+"_temp.yml", "wb") do |saved_file|
       open(path, "rb") do |read_file|
         saved_file.write(read_file.read)
@@ -205,7 +204,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
     if @dictionary_url
       if @next_refresh < Time.now
-        download_yaml(@dictionary_url,@file_to_download)
+        download_yaml(@dictionary_url)
         @next_refresh = Time.now + @refresh_interval
         @logger.info("downloading and refreshing dictionary file")
       end

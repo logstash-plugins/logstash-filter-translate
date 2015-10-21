@@ -2,4 +2,5 @@
 Gemfile.lock
 .bundle
 vendor
-foo.yml
+*.iml
+.idea
