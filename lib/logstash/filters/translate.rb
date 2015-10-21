@@ -193,7 +193,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   public
   def filter(event)
-    return unless filter?(event)
+    
 
     if @dictionary_path
       if @next_refresh < Time.now
