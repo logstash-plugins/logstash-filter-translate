@@ -16,8 +16,8 @@ require "logstash/namespace"
 # `regex` configuration item has been enabled), the field's value will be substituted
 # with the matched key's value from the dictionary.
 #
-# By default, the translate filter will replace the contents of the 
-# maching event field (in-place). However, by using the `destination`
+# By default, the translate filter will put the translated value in
+# [source field]_translated. However, by using the `destination`
 # configuration item, you may also specify a target event field to
 # populate with the new translated value.
 # 
@@ -30,7 +30,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # The name of the logstash event field containing the value to be compared for a
   # match by the translate filter (e.g. `message`, `host`, `response_code`). 
   # 
-  # If this field is an array, only the first value will be used.
+  # If this field is an array then the plugin will iterate over the full array and
+  # store the translated values in the same position in the destination field.
   config :field, :validate => :string, :required => true
 
   # If the destination (or target) field already exists, this configuration item specifies
@@ -69,11 +70,11 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # (in seconds) logstash will check the YAML file for updates.
   config :refresh_interval, :validate => :number, :default => 300
   
-  # The destination field you wish to populate with the translated code. The default
-  # is a field named `translation`. Set this to the same value as source if you want
-  # to do a substitution, in this case filter will allways succeed. This will clobber
-  # the old value of the source field! 
-  config :destination, :validate => :string, :default => "translation"
+  # The destination field you wish to populate with the translated code. If not set
+  # [source field]_translation will the destination field. Set this to the same value
+  # as source and set override to true if you want to do a substitution, in this case
+  # filter will allways succeed. This will clobber the old value of the source field!
+  config :destination, :validate => :string
 
   # When `exact => true`, the translate filter will populate the destination field
   # with the exact contents of the dictionary value. When `exact => false`, the
@@ -112,7 +113,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
   config :fallback, :validate => :string
 
-  public
+  private
   def register
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
@@ -128,7 +129,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end # def register
 
-  public
+  private
   def load_yaml(registering=false)
     if !File.exists?(@dictionary_path)
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
@@ -146,6 +147,55 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end
 
+  private
+  def match_event(source, event)
+    event_item = ''
+
+    if @exact
+      if @regex
+        key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
+        if key
+          event_item = @dictionary[key]
+          matched = true
+        end
+      elsif @dictionary.include?(source)
+        event_item = @dictionary[source]
+        matched = true
+      end
+    else
+      translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
+      if source != translation
+        event_item = translation
+        matched = true
+      end
+    end
+    if  !matched && @fallback
+      event_item = event.sprintf(@fallback)
+      matched = true
+    end
+    return event_item, matched
+  end
+
+  private
+  def determine_field_type(event)
+    #Check if field is an array
+    if event[@field].is_a?(Array)
+      #Field is an array, walk it
+      event[@field].each_with_index do |source, index|
+        event[@destination] ||= []
+        event_item,matched = match_event(source.to_s, event)
+        event[@destination][index] = event_item if matched
+      end
+
+    else
+      #Field is not an array
+      event_item,matched = match_event(event[@field].to_s, event)
+      event[@destination] = event_item.force_encoding(Encoding::UTF_8) if matched
+    end
+
+    filter_matched(event) if matched or @field == @destination
+  end
+
   public
   def filter(event)
     return unless filter?(event)
@@ -157,39 +207,17 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         @logger.info("refreshing dictionary file")
       end
     end
+
+    #if destination is not set default to #{@field}_translation
+    @destination ||= "#{@field}_translation"
     
     return unless event.include?(@field) # Skip translation in case event does not have @event field.
-    return if event.include?(@destination) and not @override # Skip translation in case @destination field already exists and @override is disabled.
+    return if event.include?(@destination) &&  !@override # Skip translation in case @destination field already exists and @override is disabled.
 
     begin
-      #If source field is array use first value and make sure source value is string
-      source = event[@field].is_a?(Array) ? event[@field].first.to_s : event[@field].to_s
-      matched = false
-      if @exact
-        if @regex
-          key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
-          if key
-            event[@destination] = @dictionary[key]
-            matched = true
-          end
-        elsif @dictionary.include?(source)
-          event[@destination] = @dictionary[source]
-          matched = true
-        end
-      else 
-        translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
-        if source != translation
-          event[@destination] = translation.force_encoding(Encoding::UTF_8)
-          matched = true
-        end
-      end
+      determine_field_type(event)
 
-      if not matched and @fallback
-        event[@destination] = event.sprintf(@fallback)
-        matched = true
-      end
-      filter_matched(event) if matched or @field == @destination
-    rescue Exception => e
+    rescue => e
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
   end # def filter
