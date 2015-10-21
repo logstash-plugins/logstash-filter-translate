@@ -113,7 +113,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
   config :fallback, :validate => :string
 
-  private
+  public
   def register
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
