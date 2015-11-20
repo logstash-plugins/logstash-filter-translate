@@ -195,9 +195,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         @next_refresh = Time.now + @refresh_interval
         @logger.info("refreshing dictionary file")
       end
-    end
-
-    if @dictionary_url
+    elsif @dictionary_url
       if @next_refresh < Time.now
         download_yaml(@dictionary_url)
         @next_refresh = Time.now + @refresh_interval
