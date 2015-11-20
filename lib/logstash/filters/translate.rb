@@ -1,15 +1,19 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
+require "open-uri"
+require 'digest/sha1'
 
 # A general search and replace tool which uses a configured hash
-# and/or a YAML file to determine replacement values.
+# and/or a YAML file or a Web service with a YAML response to determine replacement values.
 #
-# The dictionary entries can be specified in one of two ways: First,
+# The dictionary entries can be specified in one of three ways: First,
 # the `dictionary` configuration item may contain a hash representing
 # the mapping. Second, an external YAML file (readable by logstash) may be specified
 # in the `dictionary_path` configuration item. These two methods may not be used
 # in conjunction; it will produce an error.
+# Third, a Web service who your request produces a YML response. This may not be 
+# used in conjunction with the first and second method; it will produce an error.
 #
 # Operationally, if the event field specified in the `field` configuration
 # matches the EXACT contents of a dictionary entry key (or matches a regex if
@@ -50,7 +54,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #                         "old version", "new version" ]
   #       }
   #     }
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path` or `dictionary_url`
   config :dictionary, :validate => :hash,  :default => {}
 
   # The full path of the external YAML dictionary file. The format of the table
@@ -62,11 +66,17 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #     merci: gracias
   #     old version: new version
   #     
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path` or `dictionary_url`
   config :dictionary_path, :validate => :path
 
-  # When using a dictionary file, this setting will indicate how frequently
-  # (in seconds) logstash will check the YAML file for updates.
+  # The full URI path of a Web service who generates an yml format response. 
+  # The response generated needs to be equals than needed for @dictionary_path
+  #
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path` or `dictionary_url`
+  config :dictionary_url, :validate => :string
+
+  # When using a dictionary file or url, this setting will indicate how frequently
+  # (in seconds) logstash will check the YAML file or url for updates.
   config :refresh_interval, :validate => :number, :default => 300
   
   # The destination field you wish to populate with the translated code. The default
@@ -114,10 +124,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   public
   def register
+    registering = true
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
-      registering = true
       load_yaml(registering)
+    elsif @dictionary_url
+      @next_refresh = Time.now + @refresh_interval
+      download_yaml(@dictionary_url, registering)
     end
     
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -128,23 +141,49 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end # def register
 
-  public
-  def load_yaml(registering=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+  private
+  def load_file(registering, file_name, yaml_data=nil)
+    if !File.exists?(file_name)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => file_name)
       return
     end
 
     begin
-      @dictionary.merge!(YAML.load_file(@dictionary_path))
+      if yaml_data==nil
+        yaml_data = YAML.load_file(file_name)
+      end
+      @dictionary.merge!(yaml_data)
     rescue Exception => e
       if registering
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path}"
+        raise "#{self.class.name}: Bad Syntax in dictionary file #{file_name}"
       else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
+        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => file_name)
       end
     end
+  end # def load_file
+
+  public
+  def load_yaml(registering=false)
+    load_file(registering, @dictionary_path)
+  end # def load_yaml
+
+  public
+  def download_yaml(path, registering=false)
+    file_name = Digest::SHA1.hexdigest path;
+    File.open(file_name+"_temp.yml", "wb") do |saved_file|
+      open(path, "rb") do |read_file|
+        saved_file.write(read_file.read)
+      end
+    end
+    begin
+      yaml_data = YAML.load_file(file_name+"_temp.yml")
+      FileUtils.mv(file_name+"_temp.yml", file_name+".yml")
+    rescue Exception => e
+      FileUtils.rm_f(file_name+"_temp.yml")
+    end
+    load_file(registering, file_name+".yml", yaml_data)
   end
+  # def download_yaml
 
   public
   def filter(event)
@@ -155,6 +194,12 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         load_yaml
         @next_refresh = Time.now + @refresh_interval
         @logger.info("refreshing dictionary file")
+      end
+    elsif @dictionary_url
+      if @next_refresh < Time.now
+        download_yaml(@dictionary_url)
+        @next_refresh = Time.now + @refresh_interval
+        @logger.info("downloading and refreshing dictionary file")
       end
     end
     

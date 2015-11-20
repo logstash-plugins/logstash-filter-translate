@@ -1,6 +1,9 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
+require "webmock/rspec"
+require 'digest/sha1'
+WebMock.disable_net_connect!(allow_localhost: true)
 
 describe LogStash::Filters::Translate do
 
@@ -100,6 +103,149 @@ describe LogStash::Filters::Translate do
         expect(event["translation"]).to eq("no match")
       end
     end
+  end
+  
+  describe "webserver translation" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+          hash = Digest::SHA1.hexdigest 'http://dummyurl/'
+          config.before(:each) do
+              FileUtils.rm_rf(hash+'.yml')
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400': Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf(hash+'.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OK"
+      end
+  end
+  
+  describe "webserver translation existing YML" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
+          config.before(:each) do
+              FileUtils.rm_rf(hash+'.yml')
+              File.open(hash+'.yml', 'wb') { |f| f.write("\
+                                                       '200': OKF\n\
+                                                       '300': Redirect\n\
+                                                       '400': Client Error\n\
+                                                       '500': Server Error") }
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400': Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf(hash+'.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OK"
+      end
+  end
+  
+  describe "webserver translation not valid" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
+          config.before(:each) do
+              FileUtils.rm_rf(hash+'.yml')
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400', Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf(hash+'.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == nil
+      end
+  end
+  
+  describe "webserver translation not valid existing YML" do
+      config <<-CONFIG
+      filter {
+          translate {
+              field       => "status"
+              destination => "translation"
+              dictionary_url  => "http://dummyurl/"
+          }
+      }
+      CONFIG
+      
+      RSpec.configure do |config|
+        hash = Digest::SHA1.hexdigest 'http://dummyurl/'
+          config.before(:each) do
+              FileUtils.rm_rf(hash+'.yml')
+              File.open(hash+'.yml', 'wb') { |f| f.write("\
+                                                       '200': OKF\n\
+                                                       '300': Redirect\n\
+                                                       '400': Client Error\n\
+                                                       '500': Server Error") }
+              stub_request(:get, "http://dummyurl/").
+              with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+              to_return(:status => 200, :body => "\
+                        '200': OK\n\
+                        '300': Redirect\n\
+                        '400', Client Error\n\
+                        '500': Server Error", :headers => {})
+          end
+          config.after(:all) do
+              FileUtils.rm_rf(hash+'.yml')
+          end
+      end
+      
+      sample("status" => "200") do
+          insist { subject["translation"] } == "OKF"
+      end
+  end
 
     context "allow sprintf" do
       let(:config) do
@@ -118,6 +264,4 @@ describe LogStash::Filters::Translate do
         expect(event["translation"]).to eq("missing no match")
       end
     end
-  end
-
 end
