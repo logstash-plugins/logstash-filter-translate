@@ -128,8 +128,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       load_yaml(registering)
-    end
-    if @dictionary_url
+    elsif @dictionary_url
       @next_refresh = Time.now + @refresh_interval
       download_yaml(@dictionary_url, registering)
     end
