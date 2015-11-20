@@ -184,7 +184,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     if rename
       FileUtils.mv(file_name+"_temp.yml", file_name+".yml")
     else
-      FileUtils.rm_rf(file_name+"_temp.yml")
+      FileUtils.rm_f(file_name+"_temp.yml")
     end
     load_file(registering, file_name+".yml", yaml_data)
   end
