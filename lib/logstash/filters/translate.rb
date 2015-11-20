@@ -175,15 +175,10 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         saved_file.write(read_file.read)
       end
     end
-    rename = true
     begin
       yaml_data = YAML.load_file(file_name+"_temp.yml")
-    rescue Exception => e
-      rename = false
-    end
-    if rename
       FileUtils.mv(file_name+"_temp.yml", file_name+".yml")
-    else
+    rescue Exception => e
       FileUtils.rm_f(file_name+"_temp.yml")
     end
     load_file(registering, file_name+".yml", yaml_data)
