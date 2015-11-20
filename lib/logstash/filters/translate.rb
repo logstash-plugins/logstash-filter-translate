@@ -131,7 +131,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
     if @dictionary_url
       @next_refresh = Time.now + @refresh_interval
-      download_yaml(@dictionary_url,registering)
+      download_yaml(@dictionary_url, registering)
     end
     
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -143,52 +143,53 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end # def register
 
   private
-  def load_file(registering,fileName,yamlData=nil)
-    if !File.exists?(fileName)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => fileName)
+  def load_file(registering, file_name, yaml_data=nil)
+    if !File.exists?(file_name)
+      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => file_name)
       return
     end
 
     begin
-      if yamlData==nil
-        yamlData = YAML.load_file(fileName)
+      if yaml_data==nil
+        yaml_data = YAML.load_file(file_name)
       end
-      @dictionary.merge!(yamlData)
+      @dictionary.merge!(yaml_data)
     rescue Exception => e
       if registering
-        raise "#{self.class.name}: Bad Syntax in dictionary file #{fileName}"
+        raise "#{self.class.name}: Bad Syntax in dictionary file #{file_name}"
       else
-        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => fileName)
+        @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => file_name)
       end
     end
   end # def load_file
 
   public
   def load_yaml(registering=false)
-    load_file(registering,@dictionary_path)
+    load_file(registering, @dictionary_path)
   end # def load_yaml
 
   public
-  def download_yaml(path,registering=false)
-    filename = Digest::SHA1.hexdigest path;
-    File.open(filename+"_temp.yml", "wb") do |saved_file|
+  def download_yaml(path, registering=false)
+    file_name = Digest::SHA1.hexdigest path;
+    File.open(file_name+"_temp.yml", "wb") do |saved_file|
       open(path, "rb") do |read_file|
         saved_file.write(read_file.read)
       end
     end
     rename = true
     begin
-        yamlData = YAML.load_file(filename+"_temp.yml")
+      yaml_data = YAML.load_file(file_name+"_temp.yml")
     rescue Exception => e
-        rename = false
+      rename = false
     end
     if rename
-        FileUtils.mv(filename+"_temp.yml", filename+".yml")
+      FileUtils.mv(file_name+"_temp.yml", file_name+".yml")
     else
-        FileUtils.rm_rf(filename+"_temp.yml")
+      FileUtils.rm_rf(file_name+"_temp.yml")
     end
-    load_file(registering,filename+".yml",yamlData)
-  end # def download_yaml
+    load_file(registering, file_name+".yml", yaml_data)
+  end
+  # def download_yaml
 
   public
   def filter(event)
