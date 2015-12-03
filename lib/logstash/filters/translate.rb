@@ -64,11 +64,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #     "101": Switching Protocols
   #     merci: gracias
   #     old version: new version
-  # 
+  #
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
   # NOTE: Currently supported formats are YAML, JSON and CSV, format selection is
-  # based on the file extension, json for json, (yaml|yml) for YAML and csv for CSV.
-  # NOTE: Important to use equivalent formtats for JSON and CSV, only simple hash are used for now.
+  # based on the file extension, json for JSON, (yaml|yml) for YAML and csv for CSV.
+  # NOTE: The JSON format only supports simple key/value, unnested objects. The CSV
+  # format expects exactly two columns with the first serving as the original text,
+  # the second column as the replacement
   config :dictionary_path, :validate => :path
 
   # When using a dictionary file, this setting will indicate how frequently
