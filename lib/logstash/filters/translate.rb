@@ -123,8 +123,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   def register
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
-      registering = true
-      load_dictionary(registering)
+      raise_exception = true
+      load_dictionary(raise_exception)
     end
 
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -182,35 +182,35 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   private
 
-  def load_dictionary(registering=false)
+  def load_dictionary(raise_exception=false)
     if /.y[a]?ml$/.match(@dictionary_path)
-      load_yaml(registering)
+      load_yaml(raise_exception)
     elsif @dictionary_path.end_with?(".json")
-      load_json(registering)
+      load_json(raise_exception)
     elsif @dictionary_path.end_with?(".csv")
-      load_csv(registering)
+      load_csv(raise_exception)
     else
       raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
     end
   end
 
-  def load_yaml(registering=false)
+  def load_yaml(raise_exception=false)
     if !File.exists?(@dictionary_path)
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       return
     end
-    merge_dictionary!(YAML.load_file(@dictionary_path), registering)
+    merge_dictionary!(YAML.load_file(@dictionary_path), raise_exception)
   end
 
-  def load_json(registering=false)
+  def load_json(raise_exception=false)
     if !File.exists?(@dictionary_path)
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       return
     end
-    merge_dictionary!(JSON.parse(File.read(@dictionary_path)), registering)
+    merge_dictionary!(JSON.parse(File.read(@dictionary_path)), raise_exception)
   end
 
-  def load_csv(registering=false)
+  def load_csv(raise_exception=false)
     if !File.exists?(@dictionary_path)
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       return
@@ -219,14 +219,14 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       acc[v[0]] = v[1]
       acc
     end
-    merge_dictionary!(data, registering)
+    merge_dictionary!(data, raise_exception)
   end
 
-  def merge_dictionary!(data, registering=false)
+  def merge_dictionary!(data, raise_exception=false)
     begin
       @dictionary.merge!(data)
     rescue  => e
-      if registering
+      if raise_exception
         raise "#{self.class.name}: Bad Syntax in dictionary file #{@dictionary_path} #{e}"
       else
         @logger.warn("#{self.class.name}: Bad Syntax in dictionary file, continuing with old dictionary", :dictionary_path => @dictionary_path)
