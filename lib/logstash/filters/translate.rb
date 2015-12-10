@@ -192,6 +192,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     else
       raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
     end
+  rescue => e
+    loading_exception(e, raise_exception)
   end
 
   def load_yaml(raise_exception=false)
@@ -223,15 +225,15 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def merge_dictionary!(data, raise_exception=false)
-    begin
       @dictionary.merge!(data)
-    rescue  Exception => e
-      msg = "#{self.class.name}: #{e.message} when loading dictionary file at #{@dictionary_path}"
-      if raise_exception
-        raise RuntimeError.new(msg)
-      else
-        @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
-      end
+  end
+
+  def loading_exception(e, raise_exception=false)
+    msg = "#{self.class.name}: #{e.message} when loading dictionary file at #{@dictionary_path}"
+    if raise_exception
+      raise RuntimeError.new(msg)
+    else
+      @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
     end
   end
 end # class LogStash::Filters::Translate

@@ -134,8 +134,9 @@ describe LogStash::Filters::Translate do
       }
     end
 
-    it "return the exact translation" do
-      expect { subject.register }.to raise_error("#{described_class}: can't convert String into Hash when loading dictionary file at #{dictionary_path}")
+    it "raises exception when loading" do
+      error = "(#{dictionary_path}): mapping values are not allowed here at line 1 column 45 when loading dictionary file at #{dictionary_path}"
+      expect { subject.register }.to raise_error("#{described_class}: #{error}")
     end
 
     context "when using a yml file" do
