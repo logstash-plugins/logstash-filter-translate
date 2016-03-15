@@ -42,8 +42,8 @@ describe LogStash::Filters::Translate do
                            "300", "Redirect",
                            "400", "Client Error",
                            "500", "Server Error" ],
-                           "exact"       => false,
-                           "regex"       => false
+        "exact"       => false,
+        "regex"       => false
       }
     end
 
@@ -82,7 +82,6 @@ describe LogStash::Filters::Translate do
   end
 
   describe "fallback value" do
-
     context "static configuration" do
       let(:config) do
         {
@@ -118,6 +117,66 @@ describe LogStash::Filters::Translate do
         expect(event["translation"]).to eq("missing no match")
       end
     end
+
+    context "static json configuration with a json dictionary lookup file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.json") }
+
+      let(:config) do
+        {
+          "field"       => "ip",
+          "destination" => "geo",
+          "dictionary_path"  => dictionary_path,
+          "exact"       => true,
+          "regex"       => false,
+          "fallback" => %Q[{"ip":"lookup failed","lat":-1.234,"lng":12.345,"loc":[12.345,-1.234],"name":"unknown server"}]
+        }
+      end
+
+      let(:event) { LogStash::Event.new("ip" => "10.2.10.9") }
+
+      it "returns the fallback translation" do
+        subject.register
+        subject.filter(event)
+        translated = event["geo"]
+        expect(translated).to be_a(Hash)
+        expect(translated["ip"]).to eq("lookup failed")
+        expect(translated["lat"]).to eq(-1.234)
+        expect(translated["lng"]).to eq(12.345)
+        expect(translated["loc"]).to eq([12.345, -1.234])
+        expect(translated["name"]).to eq("unknown server")
+        expect(event["[geo][name]"]).to eq("unknown server")
+      end
+    end
+
+    context "static yaml configuration with a yaml dictionary lookup file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+
+      let(:config) do
+        {
+          "field"       => "ip",
+          "destination" => "geo",
+          "dictionary_path"  => dictionary_path,
+          "exact"       => true,
+          "regex"       => false,
+          "fallback" => %Q[---\n  ip: "lookup failed"\n  lat: -1.234\n  lng: 12.345\n  loc: \n    - 12.345\n    - -1.234\n  name: "unknown server"\n]
+        }
+      end
+
+      let(:event) { LogStash::Event.new("ip" => "10.2.10.9") }
+
+      it "returns the fallback translation" do
+        subject.register
+        subject.filter(event)
+        translated = event["geo"]
+        expect(translated).to be_a(Hash)
+        expect(translated["ip"]).to eq("lookup failed")
+        expect(translated["lat"]).to eq(-1.234)
+        expect(translated["lng"]).to eq(12.345)
+        expect(translated["loc"]).to eq([12.345, -1.234])
+        expect(translated["name"]).to eq("unknown server")
+        expect(event["[geo][name]"]).to eq("unknown server")
+      end
+    end
   end
 
   describe "loading a dictionary" do
@@ -151,13 +210,29 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a json file" do
+      let(:config) do
+        {
+          "field"       => "ip",
+          "destination" => "geo",
+          "dictionary_path"  => dictionary_path,
+          "exact"       => true,
+          "regex"       => false
+        }
+      end
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.json") }
-      let(:event) { LogStash::Event.new("status" => "b") }
+      let(:event) { LogStash::Event.new("ip" => "10.2.10.3") }
 
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq(20)
+        translated = event["geo"]
+        expect(translated).to be_a(Hash)
+        expect(translated["ip"]).to eq("10.2.10.3")
+        expect(translated["lat"]).to eq(-1.234)
+        expect(translated["lng"]).to eq(12.345)
+        expect(translated["loc"]).to eq([12.345, -1.234])
+        expect(translated["name"]).to eq("app-svr-103")
+        expect(event["[geo][name]"]).to eq("app-svr-103")
       end
     end
 
