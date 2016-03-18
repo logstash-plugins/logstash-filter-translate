@@ -1,3 +1,5 @@
+# 2.1.2
+  - New dependency requirements for logstash-core for the 5.0 release
 ## 2.1.1
   - Add more descriptive message with the dictionary could not be loaded,
   also include test for it. 
