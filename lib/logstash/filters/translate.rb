@@ -1,11 +1,13 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
-require "json"
+require "logstash/json"
+require "logstash/util"
 require "csv"
+require "stringio"
 
 # A general search and replace tool which uses a configured hash
-# and/or a file to determine replacement values. Currently supported are 
+# and/or a file to determine replacement values. Currently supported are
 # YAML, JSON and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
@@ -19,11 +21,11 @@ require "csv"
 # `regex` configuration item has been enabled), the field's value will be substituted
 # with the matched key's value from the dictionary.
 #
-# By default, the translate filter will replace the contents of the 
+# By default, the translate filter will replace the contents of the
 # maching event field (in-place). However, by using the `destination`
 # configuration item, you may also specify a target event field to
 # populate with the new translated value.
-# 
+#
 # Alternatively, for simple string search and replacements for just a few values
 # you might consider using the gsub function of the mutate filter.
 
@@ -31,8 +33,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config_name "translate"
 
   # The name of the logstash event field containing the value to be compared for a
-  # match by the translate filter (e.g. `message`, `host`, `response_code`). 
-  # 
+  # match by the translate filter (e.g. `message`, `host`, `response_code`).
+  #
   # If this field is an array, only the first value will be used.
   config :field, :validate => :string, :required => true
 
@@ -67,10 +69,12 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
   # NOTE: Currently supported formats are YAML, JSON and CSV, format selection is
-  # based on the file extension, json for JSON, (yaml|yml) for YAML and csv for CSV.
-  # NOTE: The JSON format only supports simple key/value, unnested objects. The CSV
-  # format expects exactly two columns with the first serving as the original text,
-  # the second column as the replacement
+  #   based on the file extension, json for JSON, (yaml|yml) for YAML and csv for CSV.
+  # NOTE: The JSON and YAML formats only supports key lookups at depth 1. You may use a hash
+  #   structure as a value - this hash will be embedded into the event. E.g. use this
+  #   do the equivalent of a geoip lookup but on keys defined in the dictionary.
+  #   The CSV format expects exactly two columns with the first serving as the original text,
+  #   the second column as the replacement
   config :dictionary_path, :validate => :path
 
   # When using a dictionary file, this setting will indicate how frequently
@@ -80,7 +84,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
   # to do a substitution, in this case filter will allways succeed. This will clobber
-  # the old value of the source field! 
+  # the old value of the source field!
   config :destination, :validate => :string, :default => "translation"
 
   # When `exact => true`, the translate filter will populate the destination field
@@ -100,7 +104,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # set to `foofing`, the destination field will be set to `barfing`.
   #
   # Set both `exact => true` AND `regex => `true` if you would like to match using dictionary
-  # keys as regular expressions. A large dictionary could be expensive to match in this case. 
+  # keys as regular expressions. A large dictionary could be expensive to match in this case.
   config :exact, :validate => :boolean, :default => true
 
   # If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
@@ -118,9 +122,15 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # field would be set to `bar`. However, if logstash received an event with `foo` set to `nope`,
   # then the destination field would still be populated, but with the value of `no match`.
   # This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
+  # This value can also be JSON if using a JSON dictionary file. The JSON will be deserialized into
+  # the event if a lookup fails
+  # NOTE: There is a 1 to 1 mapping here. You cannot use a JSON string here and a yaml file for the
+  # dictionary.
   config :fallback, :validate => :string
 
   def register
+    @load_method = method(:plain_io_load)
+
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       raise_exception = true
@@ -155,14 +165,17 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         if @regex
           key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
           if key
-            event[@destination] = @dictionary[key]
+            # need to make a deep copy so event[key]
+            # does not point to the dictionary object
+            event[@destination] = deep_clone(@dictionary[key])
             matched = true
           end
         elsif @dictionary.include?(source)
-          event[@destination] = @dictionary[source]
+          event[@destination] = deep_clone(@dictionary[source])
           matched = true
         end
-      else 
+      else
+        # translation is a copy, gsub used - clone not needed
         translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
         if source != translation
           event[@destination] = translation.force_encoding(Encoding::UTF_8)
@@ -170,62 +183,88 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         end
       end
 
-      if not matched and @fallback
-        event[@destination] = event.sprintf(@fallback)
+      if !matched && @fallback
+        event[@destination] = parsed_fallback(event.sprintf(@fallback))
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
     rescue Exception => e
-      @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
+      @logger.error("Something went wrong when attempting to translate from dictionary",
+        :exception => e, :field => @field, :event => event)
     end
   end # def filter
 
   private
 
+  def deep_clone(o)
+    LogStash::Util.deep_clone(o)
+  end
+
+  def parsed_fallback(string)
+    io = StringIO.new(string)
+    m = @load_method
+    begin
+      # don't need deep_clone here because its deserializing a new object each time
+      m.call(io)
+    rescue => e
+      mode = m.name.to_s.split("_", 2).first
+      @logger.error("Something went wrong when attempting to use fallback value",
+        :exception => e, :field => @field, :mode => mode, :fallback => @fallback)
+      if mode != "plain"
+        io.rewind
+        m = method(:plain_io_load)
+        retry
+      else
+        ""
+      end
+    end
+  end
+
   def load_dictionary(raise_exception=false)
-    if /.y[a]?ml$/.match(@dictionary_path)
-      load_yaml(raise_exception)
-    elsif @dictionary_path.end_with?(".json")
-      load_json(raise_exception)
-    elsif @dictionary_path.end_with?(".csv")
-      load_csv(raise_exception)
-    else
-      raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
+    begin
+      if !File.exists?(@dictionary_path)
+        @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+        return
+      end
+
+      load_method_sym = if @dictionary_path.end_with?(".yaml")
+          :yaml_io_load
+        elsif @dictionary_path.end_with?(".yml")
+          :yaml_io_load
+        elsif @dictionary_path.end_with?(".json")
+          :json_io_load
+        elsif @dictionary_path.end_with?(".csv")
+          :csv_io_load
+        else
+          raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
+        end
+      @load_method = method(load_method_sym)
+      io = File.new(@dictionary_path, "r")
+      hash = @load_method.call(io)
+      merge_dictionary!(hash)
+    rescue => e
+      loading_exception(e, raise_exception)
     end
-  rescue => e
-    loading_exception(e, raise_exception)
   end
 
-  def load_yaml(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    merge_dictionary!(YAML.load_file(@dictionary_path), raise_exception)
+  def plain_io_load(io)
+    io.read
   end
 
-  def load_json(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    merge_dictionary!(JSON.parse(File.read(@dictionary_path)), raise_exception)
+  def json_io_load(io)
+    ::LogStash::Json.load(io)
   end
 
-  def load_csv(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    data = CSV.read(@dictionary_path).inject(Hash.new) do |acc, v|
-      acc[v[0]] = v[1]
-      acc
-    end
-    merge_dictionary!(data, raise_exception)
+  def yaml_io_load(io)
+    ::YAML.load(io)
   end
 
-  def merge_dictionary!(data, raise_exception=false)
-      @dictionary.merge!(data)
+  def csv_io_load(io)
+    Hash[*CSV.new(io).to_a.flatten]
+  end
+
+  def merge_dictionary!(data)
+    @dictionary.merge!(data)
   end
 
   def loading_exception(e, raise_exception=false)
