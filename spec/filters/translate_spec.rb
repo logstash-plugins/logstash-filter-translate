@@ -180,4 +180,19 @@ describe LogStash::Filters::Translate do
       end
     end
   end
+
+  describe "general configuration" do
+    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+    let(:config) do
+      {
+        "field"            => "random field",
+        "dictionary"       => { "a" => "b" },
+        "dictionary_path"  => dictionary_path,
+      }
+    end
+
+    it "raises an exception if both 'dictionary' and 'dictionary_path' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
+    end
+  end
 end

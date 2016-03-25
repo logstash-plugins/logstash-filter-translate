@@ -128,6 +128,15 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     @read_lock = rw_lock.readLock
     @write_lock = rw_lock.writeLock
     
+    if @dictionary_path && !@dictionary.empty?
+      raise LogStash::ConfigurationError, I18n.t(
+        "logstash.agent.configuration.invalid_plugin_register",
+        :plugin => "filter",
+        :type => "translate",
+        :error => "The configuration options 'dictionary' and 'dictionary_path' are mutually exclusive"
+      )
+    end
+
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       raise_exception = true
