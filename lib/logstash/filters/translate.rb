@@ -4,6 +4,9 @@ require "logstash/namespace"
 require "json"
 require "csv"
 
+java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
+
+
 # A general search and replace tool which uses a configured hash
 # and/or a file to determine replacement values. Currently supported are 
 # YAML, JSON and CSV files.
@@ -121,10 +124,14 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config :fallback, :validate => :string
 
   def register
+    rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
+    @read_lock = rw_lock.readLock
+    @write_lock = rw_lock.writeLock
+    
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       raise_exception = true
-      load_dictionary(raise_exception)
+      lock_for_write { load_dictionary(raise_exception) }
     end
 
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -135,12 +142,34 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end # def register
 
+  def lock_for_read
+    @read_lock.lock
+    begin
+      yield
+    ensure
+      @read_lock.unlock
+    end
+  end
+
+  def lock_for_write
+    @write_lock.lock
+    begin
+      yield
+    ensure
+      @write_lock.unlock
+    end
+  end
+
   def filter(event)
     if @dictionary_path
-      if @next_refresh < Time.now
-        load_dictionary
-        @next_refresh = Time.now + @refresh_interval
-        @logger.info("refreshing dictionary file")
+      if needs_refresh?
+        lock_for_write do
+          if needs_refresh?
+            load_dictionary
+            @next_refresh = Time.now + @refresh_interval
+            @logger.info("refreshing dictionary file")
+          end
+        end
       end
     end
 
@@ -155,15 +184,16 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         if @regex
           key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
           if key
-            event[@destination] = @dictionary[key]
+            event[@destination] = lock_for_read { @dictionary[key] }
             matched = true
           end
         elsif @dictionary.include?(source)
-          event[@destination] = @dictionary[source]
+          event[@destination] = lock_for_read { @dictionary[source] }
           matched = true
         end
-      else 
-        translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
+      else
+        translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
+        
         if source != translation
           event[@destination] = translation.force_encoding(Encoding::UTF_8)
           matched = true
@@ -225,7 +255,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def merge_dictionary!(data, raise_exception=false)
-      @dictionary.merge!(data)
+    @dictionary.merge!(data)
   end
 
   def loading_exception(e, raise_exception=false)
@@ -235,5 +265,9 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     else
       @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
     end
+  end
+
+  def needs_refresh?
+    @next_refresh < Time.now
   end
 end # class LogStash::Filters::Translate
