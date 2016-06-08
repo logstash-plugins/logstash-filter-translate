@@ -3,6 +3,7 @@ require "logstash/filters/base"
 require "logstash/namespace"
 require "json"
 require "csv"
+require "netaddr"
 
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
@@ -106,9 +107,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # keys as regular expressions. A large dictionary could be expensive to match in this case. 
   config :exact, :validate => :boolean, :default => true
 
-  # If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
+  # If you'd like to treat dictionary keys as regular expressions, set `regex => true`.
   # Note: this is activated only when `exact => true`.
   config :regex, :validate => :boolean, :default => false
+
+  # If you'd like to treat dictionary keys as ip cidr, set `cidr => true`.
+  # Note: this is activated only when `exact => true`.
+  config :cidr, :validate => :boolean, :default => false
 
   # In case no translation occurs in the event (no matches), this will add a default
   # translation string, which will always populate `field`, if the match failed.
@@ -183,6 +188,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       if @exact
         if @regex
           key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
+          if key
+            event[@destination] = lock_for_read { @dictionary[key] }
+            matched = true
+          end
+        elsif @cidr
+          ip = NetAddr::CIDR.create(source)
+          key = @dictionary.keys.detect{ |k| NetAddr::CIDR.create(k).matches?(ip) }
           if key
             event[@destination] = lock_for_read { @dictionary[key] }
             matched = true
