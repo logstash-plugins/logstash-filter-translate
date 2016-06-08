@@ -81,6 +81,141 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  describe "cidr net translation" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/32", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => true
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "10.0.1.43") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("Net")
+    end
+  end
+
+  describe "cidr host translation" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/32", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => true
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "10.0.0.1") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("Host")
+    end
+  end
+
+  describe "cidr duplicate translation first hit" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/8", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => true
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "10.0.1.43") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("Host")
+    end
+  end
+
+  describe "cidr wrong ip" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/16", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => false,
+        "fallback"    => "no match"
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "260.0.1.43") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("no match")
+    end
+  end
+
+  describe "cidr wrong translation" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/33", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => false,
+        "fallback"    => "no match"
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "10.0.0.1") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("no match")
+    end
+  end
+
+  describe "cidr fallback" do
+
+    let(:config) do
+      {
+        "field"       => "ip",
+        "destination" => "translation",
+        "dictionary"  => [ "10.0.0.1/32", "Host",
+                           "10.0.1.1/24", "Net" ],
+        "exact"       => true,
+        "cidr"        => true,
+        "fallback"    => "no match"
+      }
+    end
+
+    let(:event) { LogStash::Event.new("ip" => "10.0.0.43") }
+
+    it "return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event["translation"]).to eq("no match")
+    end
+  end
+
   describe "fallback value" do
 
     context "static configuration" do
