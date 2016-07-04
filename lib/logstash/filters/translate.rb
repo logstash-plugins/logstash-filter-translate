@@ -56,10 +56,11 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
   config :dictionary, :validate => :hash,  :default => {}
 
-  # The full path of the external dictionary file, the filename must end in `.yaml`
-  # to be read. The format of the table should be a standard YAML, JSON or CSV. Make 
-  # sure you specify any integer-based keys in quotes. For example, the YAML file 
-  # should look something like this:
+  # The full path of the external dictionary file. The format of the table should
+  # be a standard YAML, JSON or CSV with filenames ending in `.yaml`, `.yml`,
+  #`.json` or `.csv` to be read. Make sure you specify any integer-based keys in 
+  # quotes. For example, the YAML file (`.yaml` or `.yml` should look something like 
+  # this:
   # [source,ruby]
   #     "100": Continue
   #     "101": Switching Protocols
