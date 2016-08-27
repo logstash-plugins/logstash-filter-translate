@@ -1,3 +1,6 @@
+# 3.0.0
+  - Breaking: Updated plugin to use new Java Event APIs
+
 # 2.1.4
   - Fix threadsafety issues by adding in a read/write lock
 

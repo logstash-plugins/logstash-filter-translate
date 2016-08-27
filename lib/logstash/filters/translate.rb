@@ -187,30 +187,30 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
     begin
       #If source field is array use first value and make sure source value is string
-      source = event[@field].is_a?(Array) ? event[@field].first.to_s : event[@field].to_s
+      source = event.get(@field).is_a?(Array) ? event.get(@field).first.to_s : event.get(@field).to_s
       matched = false
       if @exact
         if @regex
           key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
           if key
-            event[@destination] = lock_for_read { @dictionary[key] }
+            event.set(@destination, lock_for_read { @dictionary[key] })
             matched = true
           end
         elsif @dictionary.include?(source)
-          event[@destination] = lock_for_read { @dictionary[source] }
+          event.set(@destination, lock_for_read { @dictionary[source] })
           matched = true
         end
       else
         translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
         
         if source != translation
-          event[@destination] = translation.force_encoding(Encoding::UTF_8)
+          event.set(@destination, translation.force_encoding(Encoding::UTF_8))
           matched = true
         end
       end
 
       if not matched and @fallback
-        event[@destination] = event.sprintf(@fallback)
+        event.set(@destination, event.sprintf(@fallback))
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
