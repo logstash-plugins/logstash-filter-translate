@@ -27,7 +27,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK")
+      expect(event.get("translation")).to eq("OK")
     end
   end
 
@@ -52,7 +52,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK & Server Error")
+      expect(event.get("translation")).to eq("OK & Server Error")
     end
 
   end
@@ -77,7 +77,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK")
+      expect(event.get("translation")).to eq("OK")
     end
   end
 
@@ -97,7 +97,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("no match")
+        expect(event.get("translation")).to eq("no match")
       end
     end
 
@@ -115,7 +115,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("missing no match")
+        expect(event.get("translation")).to eq("missing no match")
       end
     end
   end
@@ -146,7 +146,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq(1)
+        expect(event.get("translation")).to eq(1)
       end
     end
 
@@ -157,7 +157,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq(20)
+        expect(event.get("translation")).to eq(20)
       end
     end
 
@@ -168,7 +168,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("300")
+        expect(event.get("translation")).to eq("300")
       end
     end
 
