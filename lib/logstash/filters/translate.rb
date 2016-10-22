@@ -8,7 +8,7 @@ java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
 
 # A general search and replace tool which uses a configured hash
-# and/or a file to determine replacement values. Currently supported are 
+# and/or a file to determine replacement values. Currently supported are
 # YAML, JSON and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
@@ -22,11 +22,11 @@ java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 # `regex` configuration item has been enabled), the field's value will be substituted
 # with the matched key's value from the dictionary.
 #
-# By default, the translate filter will replace the contents of the 
+# By default, the translate filter will replace the contents of the
 # maching event field (in-place). However, by using the `destination`
 # configuration item, you may also specify a target event field to
 # populate with the new translated value.
-# 
+#
 # Alternatively, for simple string search and replacements for just a few values
 # you might consider using the gsub function of the mutate filter.
 
@@ -34,8 +34,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config_name "translate"
 
   # The name of the logstash event field containing the value to be compared for a
-  # match by the translate filter (e.g. `message`, `host`, `response_code`). 
-  # 
+  # match by the translate filter (e.g. `message`, `host`, `response_code`).
+  #
   # If this field is an array, only the first value will be used.
   config :field, :validate => :string, :required => true
 
@@ -83,7 +83,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
   # to do a substitution, in this case filter will allways succeed. This will clobber
-  # the old value of the source field! 
+  # the old value of the source field!
   config :destination, :validate => :string, :default => "translation"
 
   # When `exact => true`, the translate filter will populate the destination field
@@ -103,7 +103,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # set to `foofing`, the destination field will be set to `barfing`.
   #
   # Set both `exact => true` AND `regex => `true` if you would like to match using dictionary
-  # keys as regular expressions. A large dictionary could be expensive to match in this case. 
+  # keys as regular expressions. A large dictionary could be expensive to match in this case.
   config :exact, :validate => :boolean, :default => true
 
   # If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
@@ -127,7 +127,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
     @read_lock = rw_lock.readLock
     @write_lock = rw_lock.writeLock
-    
+
     if @dictionary_path && !@dictionary.empty?
       raise LogStash::ConfigurationError, I18n.t(
         "logstash.agent.configuration.invalid_plugin_register",
@@ -202,7 +202,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         end
       else
         translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
-        
+
         if source != translation
           event.set(@destination, translation.force_encoding(Encoding::UTF_8))
           matched = true
@@ -277,6 +277,6 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def needs_refresh?
-    @next_refresh < Time.now
+    @refresh_interval > 0 && @next_refresh < Time.now
   end
 end # class LogStash::Filters::Translate
