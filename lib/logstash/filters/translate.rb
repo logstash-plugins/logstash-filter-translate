@@ -277,6 +277,6 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def needs_refresh?
-    @next_refresh < Time.now
+    @refresh_interval > 0 && @next_refresh < Time.now
   end
 end # class LogStash::Filters::Translate
