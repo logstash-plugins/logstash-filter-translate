@@ -7,9 +7,9 @@ require "csv"
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
 
-# A general search and replace tool which uses a configured hash
+# A general search and replace tool that uses a configured hash
 # and/or a file to determine replacement values. Currently supported are 
-# YAML, JSON and CSV files.
+# YAML, JSON, and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
 # the `dictionary` configuration item may contain a hash representing
@@ -45,7 +45,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config :override, :validate => :boolean, :default => false
 
   # The dictionary to use for translation, when specified in the logstash filter
-  # configuration item (i.e. do not use the `@dictionary_path` file)
+  # configuration item (i.e. do not use the `@dictionary_path` file).
+  #
   # Example:
   # [source,ruby]
   #     filter {
@@ -56,11 +57,12 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #                         "old version", "new version" ]
   #       }
   #     }
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
+  #
+  # NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
   config :dictionary, :validate => :hash,  :default => {}
 
   # The full path of the external dictionary file. The format of the table
-  # should be a standard YAML, JSON or CSV. Make sure you specify any integer-based keys
+  # should be a standard YAML, JSON, or CSV. Make sure you specify any integer-based keys
   # in quotes. For example, the YAML file should look something like this:
   # [source,ruby]
   #     "100": Continue
@@ -68,12 +70,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #     merci: gracias
   #     old version: new version
   #
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
-  # NOTE: Currently supported formats are YAML, JSON and CSV, format selection is
-  # based on the file extension, json for JSON, (yaml|yml) for YAML and csv for CSV.
-  # NOTE: The JSON format only supports simple key/value, unnested objects. The CSV
-  # format expects exactly two columns with the first serving as the original text,
-  # the second column as the replacement
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`.
+  #
+  # The currently supported formats are YAML, JSON, and CSV. Format selection is
+  # based on the file extension: `json` for JSON, `yaml` or `yml` for YAML, and
+  # `csv` for CSV. The JSON format only supports simple key/value, unnested
+  # objects. The CSV format expects exactly two columns, with the first serving
+  # as the original text, and the second column as the replacement.
   config :dictionary_path, :validate => :path
 
   # When using a dictionary file, this setting will indicate how frequently

@@ -1,3 +1,6 @@
+# 3.0.1
+  - Docs: Fixed asciidoc formatting problem so info about supported dictionary file types renders
+
 # 3.0.0
   - Breaking: Updated plugin to use new Java Event APIs
 
