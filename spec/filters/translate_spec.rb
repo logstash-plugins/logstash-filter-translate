@@ -195,4 +195,35 @@ describe LogStash::Filters::Translate do
       expect { subject.register }.to raise_error(LogStash::ConfigurationError)
     end
   end
+
+  describe "redis backend should not support non exact matches" do
+    let(:config) do
+      {
+        "field"            => "random field",
+        "dictionary_path"  => 'redis://localhost',
+        "exact"  => false
+      }
+    end
+
+    it "raises an exception if redis is used and 'exact' is set to false" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
+    end
+  end
+
+  describe "redis backend should not support regex based translations" do
+    let(:config) do
+      {
+        "field"            => "random field",
+        "dictionary_path"  => 'redis://localhost',
+        "exact"  => true,
+        "regex"  => true,
+      }
+    end
+
+    it "raises an exception if redis is used and 'regex' is set to true" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
+    end
+  end
+
+
 end
