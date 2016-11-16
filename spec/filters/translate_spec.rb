@@ -1,8 +1,13 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
+require "mock_redis"
 
 describe LogStash::Filters::Translate do
+  before(:all) do
+    @redis_db = MockRedis.new
+    @redis_db.set("some_key","some_value")
+  end
 
   let(:config) { Hash.new }
   subject { described_class.new(config) }
@@ -225,5 +230,22 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  describe "redis translations" do
+    let(:config) do
+      {
+        "field"            => "random_field",
+        "dictionary_path"  => "redis://localhost"
+      }
+    end
+
+    let(:event){ LogStash::Event.new("random_field" => "some_key") }
+
+    it "should return an exact match when REDIS key is present" do
+      subject.register
+      subject.instance_variable_set(:@dictionary, @redis_db) 
+      subject.filter(event)
+      expect(event.get("translation")).to eq("some_value")
+    end
+  end
 
 end
