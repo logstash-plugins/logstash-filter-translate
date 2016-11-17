@@ -1,12 +1,13 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
+require "redis"
 require "mock_redis"
 
 describe LogStash::Filters::Translate do
   before(:all) do
-    @redis_db = MockRedis.new
-    @redis_db.set("some_key","some_value")
+    @redis_available_db = MockRedis.new
+    @redis_available_db.set("some_key","some_value")
   end
 
   let(:config) { Hash.new }
@@ -230,7 +231,7 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "redis translations" do
+  describe "translating existing redis key" do
     let(:config) do
       {
         "field"            => "random_field",
@@ -242,10 +243,72 @@ describe LogStash::Filters::Translate do
 
     it "should return an exact match when REDIS key is present" do
       subject.register
-      subject.instance_variable_set(:@dictionary, @redis_db) 
+      subject.instance_variable_set(:@dictionary, @redis_available_db) 
       subject.filter(event)
       expect(event.get("translation")).to eq("some_value")
     end
+
+  end
+
+  describe "translating unexisting redis keys" do
+    let(:config) do
+      {
+        "field"            => "random_field",
+        "dictionary_path"  => "redis://localhost"
+      }
+    end
+
+    let(:event){ LogStash::Event.new("random_field" => "some_invalid_key") }
+
+    it "should not translate when no REDIS key is present" do
+      subject.register
+      subject.instance_variable_set(:@dictionary, @redis_available_db) 
+      subject.filter(event)
+      expect(event.get("translation")).to eq(nil)
+    end
+
+  end
+
+  describe "translating redis keys when server is not available" do
+    let(:config) do
+      {
+        "field"            => "random_field",
+        "dictionary_path"  => "redis://localhost"
+      }
+    end
+
+    let(:event){ LogStash::Event.new("random_field" => "some_key") }
+
+    it "should not translate when no REDIS server is not available" do
+      unavailable_redis_db = double("unavailable_redis_db")
+      allow(unavailable_redis_db).to receive(:exists).and_raise(Redis::CannotConnectError)
+      subject.register
+      subject.instance_variable_set(:@dictionary, unavailable_redis_db) 
+      subject.filter(event)
+      expect(event.get("translation")).to eq(nil)
+    end
+
+  end
+
+  describe "translating redis keys when server is taking too long to respond" do
+    let(:config) do
+      {
+        "field"            => "random_field",
+        "dictionary_path"  => "redis://localhost"
+      }
+    end
+
+    let(:event){ LogStash::Event.new("random_field" => "some_key") }
+
+    it "should not translate when no REDIS server is not taking more then [timeout] seconds to respond" do
+      unavailable_redis_db = double("unavailable_redis_db")
+      allow(unavailable_redis_db).to receive(:exists).and_raise(Redis::TimeoutError)
+      subject.register
+      subject.instance_variable_set(:@dictionary, unavailable_redis_db) 
+      subject.filter(event)
+      expect(event.get("translation")).to eq(nil)
+    end
+
   end
 
 end

@@ -80,6 +80,10 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # as the original text, and the second column as the replacement.
   config :dictionary_path, :validate => :string
 
+  # When using a REDIS server as dictionary, this setting will indicate how long
+  # (in seconds) to wait for connect,read and write operations.
+  config :timeout, :validate => :number, :default => 0.5
+
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
@@ -181,9 +185,9 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         begin
           @dictionary = Redis.new(
             :url => @dictionary_path,
-            :connect_timeout => 0.5,
-            :read_timeout    => 0.5,
-            :write_timeout   => 0.5
+            :connect_timeout => @timeout,
+            :read_timeout    => @timeout,
+            :write_timeout   => @timeout
           )
         rescue ArgumentError
           raise LogStash::ConfigurationError, I18n.t(
@@ -279,6 +283,9 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
+    rescue Redis::CannotConnectError => e
+      #We do not want to flood log with connection failures if REDIS is unavailable
+      @logger.debug? and @logger.debug("#{self.class.name}: Something went wrong when connecting to the REDIS server")
     rescue Exception => e
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
