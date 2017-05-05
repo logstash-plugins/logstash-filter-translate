@@ -3,6 +3,7 @@ require "logstash/filters/base"
 require "logstash/namespace"
 require "json"
 require "csv"
+require "redis"
 
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
@@ -77,7 +78,11 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # `csv` for CSV. The JSON format only supports simple key/value, unnested
   # objects. The CSV format expects exactly two columns, with the first serving
   # as the original text, and the second column as the replacement.
-  config :dictionary_path, :validate => :path
+  config :dictionary_path, :validate => :string
+
+  # When using a REDIS server as dictionary, this setting will indicate how long
+  # (in seconds) to wait for connect,read and write operations.
+  config :timeout, :validate => :number, :default => 0.5
 
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
@@ -130,23 +135,72 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
     @read_lock = rw_lock.readLock
     @write_lock = rw_lock.writeLock
-    
-    if @dictionary_path && !@dictionary.empty?
-      raise LogStash::ConfigurationError, I18n.t(
-        "logstash.agent.configuration.invalid_plugin_register",
-        :plugin => "filter",
-        :type => "translate",
-        :error => "The configuration options 'dictionary' and 'dictionary_path' are mutually exclusive"
-      )
-    end
+    @redis_mode = false
 
     if @dictionary_path
-      @next_refresh = Time.now + @refresh_interval
-      raise_exception = true
-      lock_for_write { load_dictionary(raise_exception) }
+      @redis_mode = true if @dictionary_path.start_with?('redis://')
+    
+      if !@redis_mode
+        if !File.file?(@dictionary_path)
+          raise LogStash::ConfigurationError, I18n.t(
+            "logstash.agent.configuration.invalid_plugin_register",
+            :plugin => "filter",
+            :type => "translate",
+            :error => "'dictionary_path' must be a valid filepath or remote database url"
+          )
+        end
+
+        if !@dictionary.empty?
+          raise LogStash::ConfigurationError, I18n.t(
+            "logstash.agent.configuration.invalid_plugin_register",
+            :plugin => "filter",
+            :type => "translate",
+            :error => "The configuration options 'dictionary' and 'dictionary_path' are mutually exclusive"
+          )
+        end
+      
+        @next_refresh = Time.now + @refresh_interval
+        raise_exception = true
+        lock_for_write { load_dictionary(raise_exception) }
+        @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
+      else
+        if !@exact
+          raise LogStash::ConfigurationError, I18n.t(
+            "logstash.agent.configuration.invalid_plugin_register",
+            :plugin => "filter",
+            :type => "translate",
+            :error => "Using REDIS as dictionary backend and setting 'exact' to false is not supported yet"
+          )
+        end
+        
+        if @regex
+          raise LogStash::ConfigurationError, I18n.t(
+            "logstash.agent.configuration.invalid_plugin_register",
+            :plugin => "filter",
+            :type => "translate",
+            :error => "Using REDIS as dictionary backend and the 'regex' option is not supported yet"
+          )
+        end
+
+        begin
+          @dictionary = Redis.new(
+            :url => @dictionary_path,
+            :connect_timeout => @timeout,
+            :read_timeout    => @timeout,
+            :write_timeout   => @timeout
+          )
+        rescue ArgumentError
+          raise LogStash::ConfigurationError, I18n.t(
+            "logstash.agent.configuration.invalid_plugin_register",
+            :plugin => "filter",
+            :type => "translate",
+            :error => "'dictionary_path' does not contain a valid REDIS url"
+          )
+        end
+
+      end
     end
 
-    @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
     if @exact
       @logger.debug? and @logger.debug("#{self.class.name}: Dictionary translation method - Exact")
     else
@@ -172,8 +226,40 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end
 
+  def file_based_filter(event, source)
+      matched = false
+      if @exact
+        if @regex
+          key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
+          if key
+            event.set(@destination, lock_for_read { @dictionary[key] })
+            matched = true
+          end
+        elsif @dictionary.include?(source)
+          event.set(@destination, lock_for_read { @dictionary[source] })
+          matched = true
+        end
+      else
+        translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
+        if source != translation
+          event.set(@destination, translation.force_encoding(Encoding::UTF_8))
+          matched = true
+        end
+      end
+      matched
+  end
+
+  def redis_based_filter(event, source)
+      matched = false
+      if @dictionary.exists(source)
+        event.set(@destination, @dictionary.get(source) )
+        matched = true
+      end
+      matched
+  end
+
   def filter(event)
-    if @dictionary_path
+    if @dictionary_path and not @redis_mode
       if needs_refresh?
         lock_for_write do
           if needs_refresh?
@@ -191,32 +277,15 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     begin
       #If source field is array use first value and make sure source value is string
       source = event.get(@field).is_a?(Array) ? event.get(@field).first.to_s : event.get(@field).to_s
-      matched = false
-      if @exact
-        if @regex
-          key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
-          if key
-            event.set(@destination, lock_for_read { @dictionary[key] })
-            matched = true
-          end
-        elsif @dictionary.include?(source)
-          event.set(@destination, lock_for_read { @dictionary[source] })
-          matched = true
-        end
-      else
-        translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
-        
-        if source != translation
-          event.set(@destination, translation.force_encoding(Encoding::UTF_8))
-          matched = true
-        end
-      end
-
+      matched = @redis_mode ? redis_based_filter(event, source) : file_based_filter(event, source)
       if not matched and @fallback
         event.set(@destination, event.sprintf(@fallback))
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
+    rescue Redis::CannotConnectError => e
+      #We do not want to flood log with connection failures if REDIS is unavailable
+      @logger.debug? and @logger.debug("#{self.class.name}: Something went wrong when connecting to the REDIS server")
     rescue Exception => e
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
