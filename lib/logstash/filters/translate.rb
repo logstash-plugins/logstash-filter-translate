@@ -105,7 +105,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # will be also set to `bar`. However, if logstash receives an event with the `data` field
   # set to `foofing`, the destination field will be set to `barfing`.
   #
-  # Set both `exact => true` AND `regex => `true` if you would like to match using dictionary
+  # Set both `exact => true` AND `regex => true` if you would like to match using dictionary
   # keys as regular expressions. A large dictionary could be expensive to match in this case. 
   config :exact, :validate => :boolean, :default => true
 
