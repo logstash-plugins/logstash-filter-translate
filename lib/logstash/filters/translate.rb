@@ -184,7 +184,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
           if needs_refresh?
             load_dictionary
             @next_refresh = Time.now + @refresh_interval
-            @logger.info("refreshing dictionary file #{@dictionary_path"")
+            @logger.info("refreshing dictionary file #{@dictionary_path}")
           end
         end
       end
