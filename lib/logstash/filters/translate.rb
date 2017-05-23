@@ -81,12 +81,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
-  config :refresh_interval, :validate => :number, :default => 5
-  # when using a dictionary file, if this is set to true, the dictionary's
-  # modification time will be checked before reloaded.  If the dictionary
-  # isn't modified, the refresh won't happen.  If you set this to false,
-  # increase the refresh_interval.
-  config :refresh_only_if_modified, :validate => :boolean, :default => true
+  config :refresh_interval, :validate => :number, :default => 300
 
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
@@ -184,7 +179,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
           if needs_refresh?
             load_dictionary
             @next_refresh = Time.now + @refresh_interval
-            @logger.info("refreshing dictionary file #{@dictionary_path}")
+            @logger.info("refreshing dictionary file ", :path => @dictionary_path)
           end
         end
       end
@@ -230,9 +225,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   private
 
   def load_dictionary(raise_exception=false)
-    if (@refresh_only_if_modified)
-      @dictionary_mtime = File.mtime(@dictionary_path)
-    end
+    @dictionary_mtime = File.mtime(@dictionary_path)
     if /.y[a]?ml$/.match(@dictionary_path)
       load_yaml(raise_exception)
     elsif @dictionary_path.end_with?(".json")
@@ -292,7 +285,9 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     if @next_refresh > now
       return false
     end
-    if @refresh_only_if_modified
+    if @refresh_interval < 0
+      return false
+    elsif @refresh_interval < 300
       mtime = File.mtime(@dictionary_path)
       if mtime != @dictionary_mtime
         return true
