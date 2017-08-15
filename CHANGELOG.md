@@ -1,3 +1,6 @@
+## 3.0.3
+  - Fix some documentation issues
+
 # 3.0.1
   - Docs: Fixed asciidoc formatting problem so info about supported dictionary file types renders
 
