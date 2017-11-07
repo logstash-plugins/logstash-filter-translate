@@ -1,9 +1,9 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-filter-translate'
-  s.version         = '3.0.3'
+  s.version         = '3.0.4'
   s.licenses        = ['Apache License (2.0)']
-  s.summary         = "A general search and replace tool which uses a configured hash and/or a YAML file to determine replacement values."
+  s.summary         = "Replaces field contents based on a hash or YAML file"
   s.description     = "This gem is a Logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/logstash-plugin install gemname. This gem is not a stand-alone program"
   s.authors         = ["Elastic"]
   s.email           = 'info@elastic.co'
