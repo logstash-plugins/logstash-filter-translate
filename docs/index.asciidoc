@@ -160,8 +160,8 @@ For example, if we have configured `fallback => "no match"`, using this dictiona
 [source,ruby]
     foo: bar
 
-Then, if logstash received an event with the field `foo` set to `bar`, the destination
-field would be set to `bar`. However, if logstash received an event with `foo` set to `nope`,
+Then, if logstash received an event with the field `data` set to `foo`, the destination
+field would be set to `bar`. However, if logstash received an event with `data` set to `nope`,
 then the destination field would still be populated, but with the value of `no match`.
 This configuration can be dynamic and include parts of the event using the `%{field}` syntax.
 
