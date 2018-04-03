@@ -60,6 +60,7 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-override>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-refresh_interval>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-regex>> |<<boolean,boolean>>|No
+| <<plugins-{type}s-{plugin}-refresh_behaviour>> |<<string,string>>|No
 |=======================================================================
 
 Also see <<plugins-{type}s-{plugin}-common-options>> for a list of options supported by all
@@ -204,6 +205,16 @@ When using a dictionary file, this setting will indicate how frequently
 
 If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
 Note: this is activated only when `exact => true`.
+
+[id="plugins-{type}s-{plugin}-refresh_behaviour"]
+===== `refresh_behaviour`
+
+  * Value type is <<string,string>>
+  * Default value is `merge`
+
+When using a dictionary file, this setting indicates how the update will be executed.
+Setting this to `merge` leads to entries removed from the dictionary file being kept;
+`replace` deletes old entries on update.
 
 
 
