@@ -1,3 +1,6 @@
+## 3.0.5
+  - Fix deleted keys have never been cleared
+
 ## 3.0.4
   - Update gemspec summary
 

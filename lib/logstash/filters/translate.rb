@@ -243,7 +243,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       return
     end
-    merge_dictionary!(YAML.load_file(@dictionary_path), raise_exception)
+    update_dictionary!(YAML.load_file(@dictionary_path))
   end
 
   def load_json(raise_exception=false)
@@ -251,7 +251,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       return
     end
-    merge_dictionary!(JSON.parse(File.read(@dictionary_path)), raise_exception)
+    update_dictionary!(JSON.parse(File.read(@dictionary_path)))
   end
 
   def load_csv(raise_exception=false)
@@ -263,11 +263,11 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
       acc[v[0]] = v[1]
       acc
     end
-    merge_dictionary!(data, raise_exception)
+    update_dictionary!(data)
   end
 
-  def merge_dictionary!(data, raise_exception=false)
-    @dictionary.merge!(data)
+  def update_dictionary!(data)
+    @dictionary = data
   end
 
   def loading_exception(e, raise_exception=false)
