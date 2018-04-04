@@ -197,41 +197,47 @@ describe LogStash::Filters::Translate do
   end
 
   describe "refresh_behaviour" do
-    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }  
+    let(:dictionary_content) { "a : 1\nb : 2\nc : 3" }
+    let(:modified_content) { "a : 1\nb : 4" }
+    let(:dictionary_path)  { "#{Stud::Temporary.pathname}.yml" }
+    let(:refresh_behaviour) { "merge" }
     let(:config) do
       {
-        "field"			=> "status",
-        "destination"		=> "translation",
-        "dictionary_path"	=> dictionary_path,
-        "refresh_interval"	=> 0,
-        "exact"			=> true,
-        "regex"			=> false,
-        "fallback"		=> "no match"
+        "field" => "status",
+        "destination" => "translation",
+        "dictionary_path" => dictionary_path,
+        "refresh_interval" => 10000, # we're controlling this manually
+        "exact" => true,
+        "regex" => false,
+        "fallback" => "no match",
+        "refresh_behaviour" => refresh_behaviour
       }
     end
-    
+
+    before :each do
+      IO.write(dictionary_path, dictionary_content)
+      subject.register
+    end
+
     let(:before_mod) { LogStash::Event.new("status" => "b") }
     let(:after_mod) { LogStash::Event.new("status" => "b") }
     let(:before_del) { LogStash::Event.new("status" => "c") }
     let(:after_del) { LogStash::Event.new("status" => "c") }
-    
+
     context "when 'merge'" do
+      let(:refresh_behaviour) { 'merge' }
       it "overwrites existing entries" do
-        subject.register
-        subject.refresh_behaviour = "merge"
         subject.filter(before_mod)
-        subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
-	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
+        IO.write(dictionary_path, modified_content)
+        subject.send(:load_dictionary)
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
       end
       it "keeps leftover entries" do
-        subject.register
-        subject.refresh_behaviour = "merge"
         subject.filter(before_del)
-        subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
-	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
+        IO.write(dictionary_path, modified_content)
+        subject.send(:load_dictionary)
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq(3)
@@ -239,23 +245,19 @@ describe LogStash::Filters::Translate do
     end
 
     context "when 'replace'" do
-      let(:dictionary_path) { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+      let(:refresh_behaviour) { 'replace' }
       it "overwrites existing entries" do
-        subject.register
-        subject.refresh_behaviour = "replace"
         subject.filter(before_mod)
-	subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
-	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
+        IO.write(dictionary_path, modified_content)
+        subject.send(:load_dictionary)
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
       end
       it "removes leftover entries" do
-        subject.register
-        subject.refresh_behaviour = "replace"
         subject.filter(before_del)
-        subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
-	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
+        IO.write(dictionary_path, modified_content)
+        subject.send(:load_dictionary)
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq("no match")
