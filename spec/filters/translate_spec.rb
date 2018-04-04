@@ -221,6 +221,7 @@ describe LogStash::Filters::Translate do
         subject.refresh_behaviour = "merge"
         subject.filter(before_mod)
         subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
+	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
@@ -230,6 +231,7 @@ describe LogStash::Filters::Translate do
         subject.refresh_behaviour = "merge"
         subject.filter(before_del)
         subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
+	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq(3)
@@ -243,6 +245,7 @@ describe LogStash::Filters::Translate do
         subject.refresh_behaviour = "replace"
         subject.filter(before_mod)
 	subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
+	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
@@ -252,6 +255,7 @@ describe LogStash::Filters::Translate do
         subject.refresh_behaviour = "replace"
         subject.filter(before_del)
         subject.dictionary_path = File.join(File.dirname(__FILE__), "..", "fixtures", "dict-modified.yml")
+	sleep 0.1 # should fix testing-only-issue with older versions of ruby having fewer accuracy of Time.now
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq("no match")
