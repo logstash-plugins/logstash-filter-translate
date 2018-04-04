@@ -27,7 +27,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK")
+      expect(event.get("translation")).to eq("OK")
     end
   end
 
@@ -52,7 +52,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK & Server Error")
+      expect(event.get("translation")).to eq("OK & Server Error")
     end
 
   end
@@ -77,7 +77,7 @@ describe LogStash::Filters::Translate do
     it "return the exact translation" do
       subject.register
       subject.filter(event)
-      expect(event["translation"]).to eq("OK")
+      expect(event.get("translation")).to eq("OK")
     end
   end
 
@@ -97,7 +97,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("no match")
+        expect(event.get("translation")).to eq("no match")
       end
     end
 
@@ -115,7 +115,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("missing no match")
+        expect(event.get("translation")).to eq("missing no match")
       end
     end
   end
@@ -146,7 +146,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq(1)
+        expect(event.get("translation")).to eq(1)
       end
     end
 
@@ -157,7 +157,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq(20)
+        expect(event.get("translation")).to eq(20)
       end
     end
 
@@ -168,7 +168,7 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         subject.register
         subject.filter(event)
-        expect(event["translation"]).to eq("300")
+        expect(event.get("translation")).to eq("300")
       end
     end
 
@@ -178,6 +178,21 @@ describe LogStash::Filters::Translate do
       it "return the exact translation" do
         expect { subject.register }.to raise_error(RuntimeError, /Dictionary #{dictionary_path} have a non valid format/)
       end
+    end
+  end
+
+  describe "general configuration" do
+    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+    let(:config) do
+      {
+        "field"            => "random field",
+        "dictionary"       => { "a" => "b" },
+        "dictionary_path"  => dictionary_path,
+      }
+    end
+
+    it "raises an exception if both 'dictionary' and 'dictionary_path' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
     end
   end
 end

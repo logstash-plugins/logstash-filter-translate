@@ -4,9 +4,12 @@ require "logstash/namespace"
 require "json"
 require "csv"
 
-# A general search and replace tool which uses a configured hash
+java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
+
+
+# A general search and replace tool that uses a configured hash
 # and/or a file to determine replacement values. Currently supported are 
-# YAML, JSON and CSV files.
+# YAML, JSON, and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
 # the `dictionary` configuration item may contain a hash representing
@@ -42,7 +45,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config :override, :validate => :boolean, :default => false
 
   # The dictionary to use for translation, when specified in the logstash filter
-  # configuration item (i.e. do not use the `@dictionary_path` file)
+  # configuration item (i.e. do not use the `@dictionary_path` file).
+  #
   # Example:
   # [source,ruby]
   #     filter {
@@ -53,7 +57,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #                         "old version", "new version" ]
   #       }
   #     }
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
+  #
+  # NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
   config :dictionary, :validate => :hash,  :default => {}
 
   # The full path of the external dictionary file. The format of the table should
@@ -67,12 +72,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   #     merci: gracias
   #     old version: new version
   #
-  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`
-  # NOTE: Currently supported formats are YAML, JSON and CSV, format selection is
-  # based on the file extension, json for JSON, (yaml|yml) for YAML and csv for CSV.
-  # NOTE: The JSON format only supports simple key/value, unnested objects. The CSV
-  # format expects exactly two columns with the first serving as the original text,
-  # the second column as the replacement
+  # NOTE: it is an error to specify both `dictionary` and `dictionary_path`.
+  #
+  # The currently supported formats are YAML, JSON, and CSV. Format selection is
+  # based on the file extension: `json` for JSON, `yaml` or `yml` for YAML, and
+  # `csv` for CSV. The JSON format only supports simple key/value, unnested
+  # objects. The CSV format expects exactly two columns, with the first serving
+  # as the original text, and the second column as the replacement.
   config :dictionary_path, :validate => :path
 
   # When using a dictionary file, this setting will indicate how frequently
@@ -123,10 +129,23 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   config :fallback, :validate => :string
 
   def register
+    rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
+    @read_lock = rw_lock.readLock
+    @write_lock = rw_lock.writeLock
+    
+    if @dictionary_path && !@dictionary.empty?
+      raise LogStash::ConfigurationError, I18n.t(
+        "logstash.agent.configuration.invalid_plugin_register",
+        :plugin => "filter",
+        :type => "translate",
+        :error => "The configuration options 'dictionary' and 'dictionary_path' are mutually exclusive"
+      )
+    end
+
     if @dictionary_path
       @next_refresh = Time.now + @refresh_interval
       raise_exception = true
-      load_dictionary(raise_exception)
+      lock_for_write { load_dictionary(raise_exception) }
     end
 
     @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
@@ -137,12 +156,34 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
   end # def register
 
+  def lock_for_read
+    @read_lock.lock
+    begin
+      yield
+    ensure
+      @read_lock.unlock
+    end
+  end
+
+  def lock_for_write
+    @write_lock.lock
+    begin
+      yield
+    ensure
+      @write_lock.unlock
+    end
+  end
+
   def filter(event)
     if @dictionary_path
-      if @next_refresh < Time.now
-        load_dictionary
-        @next_refresh = Time.now + @refresh_interval
-        @logger.info("refreshing dictionary file")
+      if needs_refresh?
+        lock_for_write do
+          if needs_refresh?
+            load_dictionary
+            @next_refresh = Time.now + @refresh_interval
+            @logger.info("refreshing dictionary file")
+          end
+        end
       end
     end
 
@@ -151,29 +192,30 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
     begin
       #If source field is array use first value and make sure source value is string
-      source = event[@field].is_a?(Array) ? event[@field].first.to_s : event[@field].to_s
+      source = event.get(@field).is_a?(Array) ? event.get(@field).first.to_s : event.get(@field).to_s
       matched = false
       if @exact
         if @regex
           key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
           if key
-            event[@destination] = @dictionary[key]
+            event.set(@destination, lock_for_read { @dictionary[key] })
             matched = true
           end
         elsif @dictionary.include?(source)
-          event[@destination] = @dictionary[source]
+          event.set(@destination, lock_for_read { @dictionary[source] })
           matched = true
         end
-      else 
-        translation = source.gsub(Regexp.union(@dictionary.keys), @dictionary)
+      else
+        translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
+        
         if source != translation
-          event[@destination] = translation.force_encoding(Encoding::UTF_8)
+          event.set(@destination, translation.force_encoding(Encoding::UTF_8))
           matched = true
         end
       end
 
       if not matched and @fallback
-        event[@destination] = event.sprintf(@fallback)
+        event.set(@destination, event.sprintf(@fallback))
         matched = true
       end
       filter_matched(event) if matched or @field == @destination
@@ -227,7 +269,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def merge_dictionary!(data, raise_exception=false)
-      @dictionary.merge!(data)
+    @dictionary.merge!(data)
   end
 
   def loading_exception(e, raise_exception=false)
@@ -237,5 +279,9 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     else
       @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
     end
+  end
+
+  def needs_refresh?
+    @next_refresh < Time.now
   end
 end # class LogStash::Filters::Translate
