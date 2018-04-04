@@ -1,5 +1,5 @@
 ## 3.1.0
-  - Fix deleted keys have never been cleared
+  - Add 'refresh_behaviour' to either 'merge' or 'replace' during a refresh #57
 
 ## 3.0.4
   - Update gemspec summary
