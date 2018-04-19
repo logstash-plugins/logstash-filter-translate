@@ -215,8 +215,9 @@ Note: this is activated only when `exact => true`.
   * Default value is `merge`
 
 When using a dictionary file, this setting indicates how the update will be executed.
-Setting this to `merge` leads to entries removed from the dictionary file being kept;
-`replace` deletes old entries on update.
+Setting this to `merge` leads merging new dictionary on old dictionary. This means 
+same entry will be updated but entries removed from new dictianary will be kept with exist value;
+`replace` leads replacing whole dictionary with new one and deletes all old entries on update.
 
 
 
