@@ -186,7 +186,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
           if needs_refresh?
             load_dictionary
             @next_refresh = Time.now + @refresh_interval
-            @logger.info("refreshing dictionary file")
+            @logger.info("refreshing dictionary file ", :path => @dictionary_path)
           end
         end
       end
@@ -232,6 +232,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   private
 
   def load_dictionary(raise_exception=false)
+    @dictionary_mtime = File.mtime(@dictionary_path)
     if /.y[a]?ml$/.match(@dictionary_path)
       load_yaml(raise_exception)
     elsif @dictionary_path.end_with?(".json")
@@ -295,6 +296,22 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   end
 
   def needs_refresh?
-    @next_refresh < Time.now
+    now = Time.now
+    if @next_refresh > now
+      return false
+    end
+    if @refresh_interval < 0
+      return false
+    elsif @refresh_interval < 300
+      mtime = File.mtime(@dictionary_path)
+      if mtime != @dictionary_mtime
+        return true
+      else
+        @next_refresh = now + @refresh_interval
+        return false
+      end
+    else
+      return true
+    end
   end
 end # class LogStash::Filters::Translate
