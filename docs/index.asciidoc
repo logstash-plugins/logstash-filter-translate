@@ -205,7 +205,7 @@ When using a dictionary file, this setting will indicate how frequently
   * Value type is <<boolean,boolean>>
   * Default value is `false`
 
-If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
+If you'd like to treat dictionary keys as regular expressions, set `regex => true`.
 Note: this is activated only when `exact => true`.
 
 [id="plugins-{type}s-{plugin}-refresh_behaviour"]
