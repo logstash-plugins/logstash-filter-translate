@@ -50,7 +50,6 @@ describe LogStash::Filters::Translate do
       x.config(:time => 20, :warmup => 120)
       x.report("filter(event)") { plugin.filter(event) }
     end
-    STDERR.puts report
     expect(report).not_to be_nil
   end
 end
