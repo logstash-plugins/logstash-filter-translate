@@ -129,14 +129,15 @@ describe LogStash::Filters::Translate do
         "field"       => "status",
         "destination" => "translation",
         "dictionary_path"  => dictionary_path,
+        "refresh_interval" => -1,
         "exact"       => true,
         "regex"       => false
       }
     end
 
     it "raises exception when loading" do
-      error = "(#{dictionary_path}): mapping values are not allowed here at line 1 column 45 when loading dictionary file at #{dictionary_path}"
-      expect { subject.register }.to raise_error("#{described_class}: #{error}")
+      error = /mapping values are not allowed here at line 1 column 45 when loading dictionary file/
+      expect { subject.register }.to raise_error(error)
     end
 
     context "when using a yml file" do
@@ -147,6 +148,28 @@ describe LogStash::Filters::Translate do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq(1)
+      end
+    end
+
+    context "when using a map tagged yml file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+      let(:event) { LogStash::Event.new("status" => "six") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("val-6-1|val-6-2")
+      end
+    end
+
+    context "when using a omap tagged yml file" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-omap-dict.yml") }
+      let(:event) { LogStash::Event.new("status" => "nine") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("val-9-1|val-9-2")
       end
     end
 
@@ -172,12 +195,81 @@ describe LogStash::Filters::Translate do
       end
     end
 
-    context "when using an uknown file" do
+    context "when using an unknown file" do
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.other") }
 
-      it "return the exact translation" do
-        expect { subject.register }.to raise_error(RuntimeError, /Dictionary #{dictionary_path} have a non valid format/)
+      it "raises error" do
+        expect { subject.register }.to raise_error(RuntimeError, /Dictionary #{dictionary_path} has a non valid format/)
       end
+    end
+  end
+
+  describe "foreach functionality" do
+    describe "when foreach is the same as field, AKA array of values" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+      let(:config) do
+        {
+          "foreach"          => "foo",
+          "field"            => "foo",
+          "destination"      => "baz",
+          "fallback"         => "nooo",
+          "dictionary_path"  => dictionary_path,
+          # "override"         => true,
+          "refresh_interval" => 0
+        }
+      end
+
+      let(:event) { LogStash::Event.new("foo" => ["nine","eight", "seven"]) }
+      it "adds a translation to destination array for each value in field array" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("baz")).to eq(["val-9-1|val-9-2", "val-8-1|val-8-2", "val-7-1|val-7-2"])
+      end
+    end
+
+    describe "when foreach is not the same as field, AKA array of maps" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+      let(:config) do
+        {
+          "foreach"          => "foo",
+          "field"            => "bar",
+          "destination"      => "baz",
+          "fallback"         => "nooo",
+          "dictionary_path"  => dictionary_path,
+          # "override"         => true,
+          "refresh_interval" => 0
+        }
+      end
+
+      let(:event) { LogStash::Event.new("foo" => [{"bar"=>"two"},{"bar"=>"one"}, {"bar"=>"six"}]) }
+      it "adds a translation to each map" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("[foo][0][baz]")).to eq("val-2-1|val-2-2")
+        expect(event.get("[foo][1][baz]")).to eq("val-1-1|val-1-2")
+        expect(event.get("[foo][2][baz]")).to eq("val-6-1|val-6-2")
+      end
+    end
+  end
+
+  describe "field and destination are the same (needs override)" do
+    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+    let(:config) do
+      {
+        "field"            => "foo",
+        "destination"      => "foo",
+        "dictionary_path"  => dictionary_path,
+        "override"         => true,
+        "refresh_interval" => -1
+      }
+    end
+
+    let(:event) { LogStash::Event.new("foo" => "nine") }
+
+    it "overwrites existing value" do
+      subject.register
+      subject.filter(event)
+      expect(event.get("foo")).to eq("val-9-1|val-9-2")
     end
   end
 
@@ -206,7 +298,7 @@ describe LogStash::Filters::Translate do
         "field" => "status",
         "destination" => "translation",
         "dictionary_path" => dictionary_path,
-        "refresh_interval" => 10000, # we're controlling this manually
+        "refresh_interval" => -1, # we're controlling this manually
         "exact" => true,
         "regex" => false,
         "fallback" => "no match",
@@ -229,7 +321,7 @@ describe LogStash::Filters::Translate do
       it "overwrites existing entries" do
         subject.filter(before_mod)
         IO.write(dictionary_path, modified_content)
-        subject.send(:load_dictionary)
+        subject.lookup.load_dictionary
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
@@ -237,7 +329,7 @@ describe LogStash::Filters::Translate do
       it "keeps leftover entries" do
         subject.filter(before_del)
         IO.write(dictionary_path, modified_content)
-        subject.send(:load_dictionary)
+        subject.lookup.load_dictionary
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq(3)
@@ -249,7 +341,7 @@ describe LogStash::Filters::Translate do
       it "overwrites existing entries" do
         subject.filter(before_mod)
         IO.write(dictionary_path, modified_content)
-        subject.send(:load_dictionary)
+        subject.lookup.load_dictionary
         subject.filter(after_mod)
         expect(before_mod.get("translation")).to eq(2)
         expect(after_mod.get("translation")).to eq(4)
@@ -257,10 +349,66 @@ describe LogStash::Filters::Translate do
       it "removes leftover entries" do
         subject.filter(before_del)
         IO.write(dictionary_path, modified_content)
-        subject.send(:load_dictionary)
+        subject.lookup.load_dictionary
         subject.filter(after_del)
         expect(before_del.get("translation")).to eq(3)
         expect(after_del.get("translation")).to eq("no match")
+      end
+    end
+  end
+
+  describe "loading an empty dictionary" do
+    let(:directory) { Pathname.new(Stud::Temporary.directory) }
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary_path"  => dictionary_path.to_path,
+        "refresh_interval" => -1,
+        "fallback" => "no match",
+        "exact"       => true,
+        "regex"       => false
+      }
+    end
+
+    before do
+      dictionary_path.open("wb") do |file|
+        file.write("")
+      end
+    end
+
+    context "when using a yml file" do
+      let(:dictionary_path) { directory.join("dict-e.yml") }
+      let(:event) { LogStash::Event.new("status" => "a") }
+
+      it "return the exact translation" do
+
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("no match")
+      end
+    end
+
+    context "when using a json file" do
+      let(:dictionary_path) { directory.join("dict-e.json") }
+      let(:event) { LogStash::Event.new("status" => "b") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("no match")
+      end
+    end
+
+    context "when using a csv file" do
+      let(:dictionary_path) { directory.join("dict-e.csv") }
+      let(:event) { LogStash::Event.new("status" => "c") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("no match")
       end
     end
   end

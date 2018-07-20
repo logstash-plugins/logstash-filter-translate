@@ -1,14 +1,17 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
-require "json"
-require "csv"
 
-java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
-
-
+require "logstash/filters/dictionary/memory"
+require "logstash/filters/dictionary/file"
+require "logstash/filters/dictionary/csv_file"
+require "logstash/filters/dictionary/yaml_file"
+require "logstash/filters/dictionary/json_file"
+require_relative "single_value_update"
+require_relative "array_of_values_update"
+require_relative "array_of_maps_value_update"
 # A general search and replace tool that uses a configured hash
-# and/or a file to determine replacement values. Currently supported are 
+# and/or a file to determine replacement values. Currently supported are
 # YAML, JSON, and CSV files.
 #
 # The dictionary entries can be specified in one of two ways: First,
@@ -22,20 +25,20 @@ java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 # `regex` configuration item has been enabled), the field's value will be substituted
 # with the matched key's value from the dictionary.
 #
-# By default, the translate filter will replace the contents of the 
+# By default, the translate filter will replace the contents of the
 # maching event field (in-place). However, by using the `destination`
 # configuration item, you may also specify a target event field to
 # populate with the new translated value.
-# 
+#
 # Alternatively, for simple string search and replacements for just a few values
 # you might consider using the gsub function of the mutate filter.
-
-class LogStash::Filters::Translate < LogStash::Filters::Base
+module LogStash module Filters
+class Translate < LogStash::Filters::Base
   config_name "translate"
 
   # The name of the logstash event field containing the value to be compared for a
-  # match by the translate filter (e.g. `message`, `host`, `response_code`). 
-  # 
+  # match by the translate filter (e.g. `message`, `host`, `response_code`).
+  #
   # If this field is an array, only the first value will be used.
   config :field, :validate => :string, :required => true
 
@@ -63,8 +66,8 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
 
   # The full path of the external dictionary file. The format of the table should
   # be a standard YAML, JSON or CSV with filenames ending in `.yaml`, `.yml`,
-  #`.json` or `.csv` to be read. Make sure you specify any integer-based keys in 
-  # quotes. For example, the YAML file (`.yaml` or `.yml` should look something like 
+  #`.json` or `.csv` to be read. Make sure you specify any integer-based keys in
+  # quotes. For example, the YAML file (`.yaml` or `.yml` should look something like
   # this:
   # [source,ruby]
   #     "100": Continue
@@ -88,7 +91,7 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
   # to do a substitution, in this case filter will allways succeed. This will clobber
-  # the old value of the source field! 
+  # the old value of the source field!
   config :destination, :validate => :string, :default => "translation"
 
   # When `exact => true`, the translate filter will populate the destination field
@@ -108,10 +111,10 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # set to `foofing`, the destination field will be set to `barfing`.
   #
   # Set both `exact => true` AND `regex => `true` if you would like to match using dictionary
-  # keys as regular expressions. A large dictionary could be expensive to match in this case. 
+  # keys as regular expressions. A large dictionary could be expensive to match in this case.
   config :exact, :validate => :boolean, :default => true
 
-  # If you'd like to treat dictionary keys as regular expressions, set `exact => true`.
+  # If you'd like to treat dictionary keys as regular expressions, set `regex => true`.
   # Note: this is activated only when `exact => true`.
   config :regex, :validate => :boolean, :default => false
 
@@ -133,11 +136,13 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
   # deletes old entries on update.
   config :refresh_behaviour, :validate => ['merge', 'replace'], :default => 'merge'
 
+  # When the
+
+  config :foreach, :validate => :string
+
+  attr_reader :lookup # for testing reloading
+
   def register
-    rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
-    @read_lock = rw_lock.readLock
-    @write_lock = rw_lock.writeLock
-    
     if @dictionary_path && !@dictionary.empty?
       raise LogStash::ConfigurationError, I18n.t(
         "logstash.agent.configuration.invalid_plugin_register",
@@ -148,170 +153,41 @@ class LogStash::Filters::Translate < LogStash::Filters::Base
     end
 
     if @dictionary_path
-      @next_refresh = Time.now + @refresh_interval
-      raise_exception = true
-      lock_for_write { load_dictionary(raise_exception) }
+      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex)
+    else
+      @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
+    end
+    if @foreach.nil?
+      @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup)
+    elsif @foreach == @field
+      @updater = ArrayOfValuesUpdate.new(@foreach, @destination, @fallback, @lookup)
+    else
+      @updater = ArrayOfMapsValueUpdate.new(@foreach, @field, @destination, @fallback, @lookup)
     end
 
-    @logger.debug? and @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @dictionary)
+    @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
     if @exact
-      @logger.debug? and @logger.debug("#{self.class.name}: Dictionary translation method - Exact")
+      @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Exact")
     else
-      @logger.debug? and @logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
+      @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
     end
   end # def register
 
-  def lock_for_read
-    @read_lock.lock
-    begin
-      yield
-    ensure
-      @read_lock.unlock
-    end
-  end
-
-  def lock_for_write
-    @write_lock.lock
-    begin
-      yield
-    ensure
-      @write_lock.unlock
-    end
+  def close
+    @lookup.stop_scheduler
   end
 
   def filter(event)
-    if @dictionary_path
-      if needs_refresh?
-        lock_for_write do
-          if needs_refresh?
-            load_dictionary
-            @next_refresh = Time.now + @refresh_interval
-            @logger.info("refreshing dictionary file ", :path => @dictionary_path)
-          end
-        end
-      end
-    end
-
-    return unless event.include?(@field) # Skip translation in case event does not have @event field.
-    return if event.include?(@destination) and not @override # Skip translation in case @destination field already exists and @override is disabled.
+    return unless @updater.test_for_inclusion(event, @override)
 
     begin
       #If source field is array use first value and make sure source value is string
-      source = event.get(@field).is_a?(Array) ? event.get(@field).first.to_s : event.get(@field).to_s
-      matched = false
-      if @exact
-        if @regex
-          key = @dictionary.keys.detect{|k| source.match(Regexp.new(k))}
-          if key
-            event.set(@destination, lock_for_read { @dictionary[key] })
-            matched = true
-          end
-        elsif @dictionary.include?(source)
-          event.set(@destination, lock_for_read { @dictionary[source] })
-          matched = true
-        end
-      else
-        translation = lock_for_read { source.gsub(Regexp.union(@dictionary.keys), @dictionary) }
-        
-        if source != translation
-          event.set(@destination, translation.force_encoding(Encoding::UTF_8))
-          matched = true
-        end
-      end
+      matched = @updater.update(event)
 
-      if not matched and @fallback
-        event.set(@destination, event.sprintf(@fallback))
-        matched = true
-      end
-      filter_matched(event) if matched or @field == @destination
+      filter_matched(event) if matched || @field == @destination
     rescue Exception => e
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
   end # def filter
-
-  private
-
-  def load_dictionary(raise_exception=false)
-    @dictionary_mtime = File.mtime(@dictionary_path)
-    if /.y[a]?ml$/.match(@dictionary_path)
-      load_yaml(raise_exception)
-    elsif @dictionary_path.end_with?(".json")
-      load_json(raise_exception)
-    elsif @dictionary_path.end_with?(".csv")
-      load_csv(raise_exception)
-    else
-      raise "#{self.class.name}: Dictionary #{@dictionary_path} have a non valid format"
-    end
-  rescue => e
-    loading_exception(e, raise_exception)
-  end
-
-  def load_yaml(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    refresh_dictionary!(YAML.load_file(@dictionary_path))
-  end
-
-  def load_json(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    refresh_dictionary!(JSON.parse(File.read(@dictionary_path)))
-  end
-
-  def load_csv(raise_exception=false)
-    if !File.exists?(@dictionary_path)
-      @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
-      return
-    end
-    data = CSV.read(@dictionary_path).inject(Hash.new) do |acc, v|
-      acc[v[0]] = v[1]
-      acc
-    end
-    refresh_dictionary!(data)
-  end
-
-  def refresh_dictionary!(data)
-    case @refresh_behaviour
-    when 'merge'
-     @dictionary.merge!(data)
-    when 'replace'
-     @dictionary = data
-    else
-     # we really should never get here
-     raise(LogStash::ConfigurationError, "Unknown value for refresh_behaviour=#{@refresh_behaviour.to_s}")
-    end
-  end
-
-  def loading_exception(e, raise_exception=false)
-    msg = "#{self.class.name}: #{e.message} when loading dictionary file at #{@dictionary_path}"
-    if raise_exception
-      raise RuntimeError.new(msg)
-    else
-      @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
-    end
-  end
-
-  def needs_refresh?
-    now = Time.now
-    if @next_refresh > now
-      return false
-    end
-    if @refresh_interval < 0
-      return false
-    elsif @refresh_interval < 300
-      mtime = File.mtime(@dictionary_path)
-      if mtime != @dictionary_mtime
-        return true
-      else
-        @next_refresh = now + @refresh_interval
-        return false
-      end
-    else
-      return true
-    end
-  end
 end # class LogStash::Filters::Translate
+end end

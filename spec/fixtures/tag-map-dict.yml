@@ -1,0 +1,21 @@
+---
+!!map {
+  ? !!str "eight"
+  : !!str "val-8-1|val-8-2",
+  ? !!str "five"
+  : !!str "val-5-1|val-5-2",
+  ? !!str "four"
+  : !!str "val-4-1|val-4-2",
+  ? !!str "nine"
+  : !!str "val-9-1|val-9-2",
+  ? !!str "one"
+  : !!str "val-1-1|val-1-2",
+  ? !!str "seven"
+  : !!str "val-7-1|val-7-2",
+  ? !!str "six"
+  : !!str "val-6-1|val-6-2",
+  ? !!str "three"
+  : !!str "val-3-1|val-3-2",
+  ? !!str "two"
+  : !!str "val-2-1|val-2-2",
+}
