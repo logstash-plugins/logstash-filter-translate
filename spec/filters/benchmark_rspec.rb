@@ -52,4 +52,20 @@ describe LogStash::Filters::Translate do
     end
     expect(event.get("[translation]")).to eq("quux")
   end
+
+  it 'dude, does your bro even bench?' do
+    event = LogStash::Event.new("status" => "baz", "translation" => "foo")
+    plugin = described_class.new(config)
+    plugin.register
+
+    report = Benchmark.ips do |x|
+      x.config(:time => 10, :warmup => 120)
+      x.report("new, register, filter(event)") do
+        plugin = described_class.new(config)
+        plugin.register
+        plugin.filter(event)
+       end
+    end
+    expect(event.get("[translation]")).to eq("quux")
+  end
 end
