@@ -41,24 +41,22 @@ describe LogStash::Filters::Translate do
     BenchmarkingFileBuilder.create_huge_csv_dictionary(directory, dictionary_name, dictionary_size)
   end
 
-  it 'dude, do you even bench?' do
+  it 'how fast is the filter method?' do
     plugin = described_class.new(config)
     plugin.register
     event = LogStash::Event.new("status" => "baz", "translation" => "foo")
 
-    report = Benchmark.ips do |x|
+    Benchmark.ips do |x|
       x.config(:time => 20, :warmup => 120)
       x.report("filter(event)") { plugin.filter(event) }
     end
     expect(event.get("[translation]")).to eq("quux")
   end
 
-  it 'dude, does your bro even bench?' do
+  it 'how fast is the new, register then filter method?' do
     event = LogStash::Event.new("status" => "baz", "translation" => "foo")
-    plugin = described_class.new(config)
-    plugin.register
 
-    report = Benchmark.ips do |x|
+    Benchmark.ips do |x|
       x.config(:time => 10, :warmup => 120)
       x.report("new, register, filter(event)") do
         plugin = described_class.new(config)
