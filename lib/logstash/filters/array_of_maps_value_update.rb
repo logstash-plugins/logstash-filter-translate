@@ -2,8 +2,8 @@
 
 module LogStash module Filters
   class ArrayOfMapsValueUpdate
-    def initialize(foreach, field, destination, fallback, lookup)
-      @foreach = ensure_reference_format(foreach)
+    def initialize(iterate_on, field, destination, fallback, lookup)
+      @iterate_on = ensure_reference_format(iterate_on)
       @field = ensure_reference_format(field)
       @destination = ensure_reference_format(destination)
       @fallback = fallback
@@ -13,17 +13,17 @@ module LogStash module Filters
 
     def test_for_inclusion(event, override)
       # Skip translation in case event does not have @event field.
-      return true if event.include?(@foreach)
+      return true if event.include?(@iterate_on)
       false
     end
 
     def update(event)
-      val = event.get(@foreach) # should be an array of hashes
+      val = event.get(@iterate_on) # should be an array of hashes
       source = Array(val)
       matches = Array.new(source.size)
       source.size.times do |index|
-        nested_field = "#{@foreach}[#{index}]#{@field}"
-        nested_destination = "#{@foreach}[#{index}]#{@destination}"
+        nested_field = "#{@iterate_on}[#{index}]#{@field}"
+        nested_destination = "#{@iterate_on}[#{index}]#{@destination}"
         inner = event.get(nested_field)
         @lookup.fetch(inner) do |value|
           event.set(nested_destination, value)

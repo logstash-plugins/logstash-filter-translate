@@ -2,8 +2,8 @@
 
 module LogStash module Filters
   class ArrayOfValuesUpdate
-    def initialize(field, destination, fallback, lookup)
-      @field = field
+    def initialize(iterate_on, destination, fallback, lookup)
+      @iterate_on = iterate_on
       @destination = destination
       @fallback = fallback
       @use_fallback = !fallback.nil?
@@ -11,15 +11,15 @@ module LogStash module Filters
     end
 
     def test_for_inclusion(event, override)
-      # Skip translation in case event does not have @event field.
-      return true if event.include?(@field)
-      # Skip translation in case @destination field already exists and @override is disabled.
+      # Skip translation in case event does not have @event iterate_on.
+      return true if event.include?(@iterate_on)
+      # Skip translation in case @destination iterate_on already exists and @override is disabled.
       return true if event.include?(@destination) && override
       false
     end
 
     def update(event)
-      val = event.get(@field)
+      val = event.get(@iterate_on)
       source = Array(val)
 
       target = Array.new(source.size)

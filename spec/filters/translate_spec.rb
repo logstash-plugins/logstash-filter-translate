@@ -204,12 +204,12 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "foreach functionality" do
-    describe "when foreach is the same as field, AKA array of values" do
+  describe "iterate_on functionality" do
+    describe "when iterate_on is the same as field, AKA array of values" do
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
       let(:config) do
         {
-          "foreach"          => "foo",
+          "iterate_on"          => "foo",
           "field"            => "foo",
           "destination"      => "baz",
           "fallback"         => "nooo",
@@ -227,11 +227,11 @@ describe LogStash::Filters::Translate do
       end
     end
 
-    describe "when foreach is not the same as field, AKA array of maps" do
+    describe "when iterate_on is not the same as field, AKA array of maps" do
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
       let(:config) do
         {
-          "foreach"          => "foo",
+          "iterate_on"          => "foo",
           "field"            => "bar",
           "destination"      => "baz",
           "fallback"         => "nooo",

@@ -138,7 +138,7 @@ class Translate < LogStash::Filters::Base
 
   # When the
 
-  config :foreach, :validate => :string
+  config :iterate_on, :validate => :string
 
   attr_reader :lookup # for testing reloading
 
@@ -157,12 +157,12 @@ class Translate < LogStash::Filters::Base
     else
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
-    if @foreach.nil?
+    if @iterate_on.nil?
       @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup)
-    elsif @foreach == @field
-      @updater = ArrayOfValuesUpdate.new(@foreach, @destination, @fallback, @lookup)
+    elsif @iterate_on == @field
+      @updater = ArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup)
     else
-      @updater = ArrayOfMapsValueUpdate.new(@foreach, @field, @destination, @fallback, @lookup)
+      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup)
     end
 
     @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
