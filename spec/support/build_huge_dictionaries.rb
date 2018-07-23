@@ -25,7 +25,7 @@ module LogStash module Filters module Dictionary
       size.times do |i|
         file.puts('  "'.concat(SecureRandom.hex(12)).concat('":"').concat("#{1000000 + i}").concat('",'))
       end
-      file.puts('  "baz":"quux"'))
+      file.puts('  "baz":"quux"')
       file.puts("}")
     end
     tmppath.rename(directory.join(name))

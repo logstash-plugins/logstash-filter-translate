@@ -40,8 +40,8 @@ module LogStash module Filters module Dictionary
       rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
       @read_lock = rw_lock.readLock
       @write_lock = rw_lock.writeLock
-      @dictionary = Hash.new
-      @keys_regex = Hash.new
+      @dictionary = Hash.new()
+      @keys_regex = Hash.new()
       @update_method = method(:merge_dictionary)
       initialize_for_file_type
       raise_exception = true

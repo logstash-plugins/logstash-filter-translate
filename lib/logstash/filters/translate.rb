@@ -39,7 +39,9 @@ class Translate < LogStash::Filters::Base
   # The name of the logstash event field containing the value to be compared for a
   # match by the translate filter (e.g. `message`, `host`, `response_code`).
   #
-  # If this field is an array, only the first value will be used.
+  # If this field is an array, only the first value will be used, unless
+  # you specify `iterate_on`. See below. If you want to use another element
+  # in the array then use `"[some_field][2]"`
   config :field, :validate => :string, :required => true
 
   # If the destination (or target) field already exists, this configuration item specifies
@@ -136,8 +138,15 @@ class Translate < LogStash::Filters::Base
   # deletes old entries on update.
   config :refresh_behaviour, :validate => ['merge', 'replace'], :default => 'merge'
 
-  # When the
-
+  # When the value that you need to perform enrichment on is a  variable sized array then specify
+  # the field name in this setting. This setting introduces two modes, 1) when the value is an
+  # array of strings and 2) when the value is an array of objects (as in JSON object).
+  # In the first mode, you should have the same field name in both `field` and `iterate_on`, the
+  # result will be an array added to the field specified in the `destination` setting. This array
+  # will have the looked up value (or the `fallback` value or nil) in same ordinal position
+  # as each sought value. In the second mode, specify the field that has the array of objects
+  # then specify the field in each object that provides the sought value with `field` and
+  # the field to write the looked up value (or the `fallback` value) to with `destination`
   config :iterate_on, :validate => :string
 
   attr_reader :lookup # for testing reloading
