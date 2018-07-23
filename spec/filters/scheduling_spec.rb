@@ -19,7 +19,7 @@ describe LogStash::Filters::Translate do
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
-        "refresh_interval" => 0.5,
+        "refresh_interval" => 1,
         "override" => true,
         "refresh_behaviour" => refresh_behaviour
       }
@@ -50,12 +50,12 @@ describe LogStash::Filters::Translate do
             subject.filter(event)
             wait(0.1).for{event.get("[translation]")}.to eq("2"), "field [translation] did not eq '2'"
           end
-          .then_after(0.1,"modify file") do
-            dictionary_path.open("wb") do |file|
+          .then_after(1,"modify file") do
+            dictionary_path.open("w") do |file|
               file.puts("a,11\nb,12\nc,13\n")
             end
           end
-          .then_after(1, "wait then translate again") do
+          .then_after(1.2, "wait then translate again") do
             subject.filter(event)
             wait(0.1).for{event.get("[translation]")}.to eq("12"), "field [translation] did not eq '12'"
           end
@@ -79,12 +79,12 @@ describe LogStash::Filters::Translate do
             subject.filter(event)
             wait(0.1).for{event.get("[translation]")}.to eq("2"), "field [translation] did not eq '2'"
           end
-          .then_after(0.1,"modify file") do
-            dictionary_path.open("wb") do |file|
+          .then_after(1,"modify file") do
+            dictionary_path.open("w") do |file|
               file.puts("a,21\nb,22\nc,23\n")
             end
           end
-          .then_after(1, "wait then translate again") do
+          .then_after(1.2, "wait then translate again") do
             subject.filter(event)
             wait(0.1).for{event.get("[translation]")}.to eq("22"), "field [translation] did not eq '22'"
           end

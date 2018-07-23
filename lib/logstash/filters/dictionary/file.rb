@@ -63,7 +63,7 @@ module LogStash module Filters module Dictionary
 
     def load_dictionary(raise_exception=false)
       begin
-        @dictionary_mtime = ::File.mtime(@dictionary_path)
+        @dictionary_mtime = ::File.mtime(@dictionary_path).to_f
         @update_method.call
       rescue Errno::ENOENT
         @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
@@ -120,7 +120,7 @@ module LogStash module Filters module Dictionary
     end
 
     def needs_refresh?
-      ::File.mtime(@dictionary_path) != @dictionary_mtime
+      @dictionary_mtime != ::File.mtime(@dictionary_path).to_f
     end
 
     def loading_exception(e, raise_exception)
