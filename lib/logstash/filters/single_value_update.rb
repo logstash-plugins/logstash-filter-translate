@@ -22,7 +22,7 @@ module LogStash module Filters
       val = event.get(@field)
       source = val.is_a?(Array) ? val.first.to_s : val.to_s
       matched = false
-      @lookup.fetch(source) do |value|
+      @lookup.fetch_strategy.fetch(source) do |value|
         event.set(@destination, value)
         matched = true
       end

@@ -25,7 +25,7 @@ module LogStash module Filters
         nested_field = "#{@iterate_on}[#{index}]#{@field}"
         nested_destination = "#{@iterate_on}[#{index}]#{@destination}"
         inner = event.get(nested_field)
-        @lookup.fetch(inner) do |value|
+        @lookup.fetch_strategy.fetch(inner) do |value|
           event.set(nested_destination, value)
           matches[index] = true
         end

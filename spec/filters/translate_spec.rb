@@ -17,8 +17,8 @@ describe LogStash::Filters::Translate do
                            "300", "Redirect",
                            "400", "Client Error",
                            "500", "Server Error" ],
-                           "exact"       => true,
-                           "regex"       => false
+        "exact"       => true,
+        "regex"       => false
       }
     end
 
@@ -33,51 +33,96 @@ describe LogStash::Filters::Translate do
 
 
   describe "multi translation" do
+    context "when using an inline dictionary" do
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "dictionary"  => [ "200", "OK",
+                             "300", "Redirect",
+                             "400", "Client Error",
+                             "500", "Server Error" ],
+          "exact"       => false,
+          "regex"       => false
+        }
+      end
 
-    let(:config) do
-      {
-        "field"       => "status",
-        "destination" => "translation",
-        "dictionary"  => [ "200", "OK",
-                           "300", "Redirect",
-                           "400", "Client Error",
-                           "500", "Server Error" ],
-                           "exact"       => false,
-                           "regex"       => false
-      }
+      let(:event) { LogStash::Event.new("status" => "200 & 500") }
+
+      it "return the exact translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("OK & Server Error")
+      end
     end
 
-    let(:event) { LogStash::Event.new("status" => "200 & 500") }
+    context "when using a file based dictionary" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "regex_union_dict.csv") }
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "dictionary_path" => dictionary_path,
+          "refresh_interval" => 0,
+          "exact"       => false,
+          "regex"       => false
+        }
+      end
 
-    it "return the exact translation" do
-      subject.register
-      subject.filter(event)
-      expect(event.get("translation")).to eq("OK & Server Error")
+      let(:event) { LogStash::Event.new("status" => "200 & 500") }
+
+      it "return the exact regex translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("OK & Server Error")
+      end
     end
-
   end
 
   describe "regex translation" do
+    context "when using an inline dictionary" do
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "dictionary"  => [ "^2[0-9][0-9]$", "OK",
+                             "^3[0-9][0-9]$", "Redirect",
+                             "^4[0-9][0-9]$", "Client Error",
+                             "^5[0-9][0-9]$", "Server Error" ],
+          "exact"       => true,
+          "regex"       => true
+        }
+      end
 
-    let(:config) do
-      {
-        "field"       => "status",
-        "destination" => "translation",
-        "dictionary"  => [ "^2[0-9][0-9]$", "OK",
-                           "^3[0-9][0-9]$", "Redirect",
-                           "^4[0-9][0-9]$", "Client Error",
-                           "^5[0-9][0-9]$", "Server Error" ],
-        "exact"       => true,
-        "regex"       => true
-      }
+      let(:event) { LogStash::Event.new("status" => "200") }
+
+      it "return the exact regex translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("OK")
+      end
     end
 
-    let(:event) { LogStash::Event.new("status" => "200") }
+    context "when using a file based dictionary" do
+      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "regex_dict.csv") }
+      let(:config) do
+        {
+          "field"       => "status",
+          "destination" => "translation",
+          "dictionary_path" => dictionary_path,
+          "refresh_interval" => 0,
+          "exact"       => true,
+          "regex"       => true
+        }
+      end
 
-    it "return the exact translation" do
-      subject.register
-      subject.filter(event)
-      expect(event.get("translation")).to eq("OK")
+      let(:event) { LogStash::Event.new("status" => "200") }
+
+      it "return the exact regex translation" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("translation")).to eq("OK")
+      end
     end
   end
 
@@ -227,7 +272,7 @@ describe LogStash::Filters::Translate do
       end
     end
 
-    describe "when iterate_on is not the same as field, AKA array of maps" do
+    describe "when iterate_on is not the same as field, AKA array of objects" do
       let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
       let(:config) do
         {

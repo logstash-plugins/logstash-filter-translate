@@ -27,7 +27,7 @@ module LogStash module Filters
         target.fill(event.sprintf(@fallback))
       end
       source.each_with_index do |inner, index|
-        @lookup.fetch(inner) do |value|
+        @lookup.fetch_strategy.fetch(inner) do |value|
           target[index] = value
         end
       end

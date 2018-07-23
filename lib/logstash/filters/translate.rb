@@ -7,6 +7,15 @@ require "logstash/filters/dictionary/file"
 require "logstash/filters/dictionary/csv_file"
 require "logstash/filters/dictionary/yaml_file"
 require "logstash/filters/dictionary/json_file"
+
+require "logstash/filters/fetch_strategy/memory_exact"
+require "logstash/filters/fetch_strategy/memory_exact_regex"
+require "logstash/filters/fetch_strategy/memory_regex_union"
+
+require "logstash/filters/fetch_strategy/file_exact"
+require "logstash/filters/fetch_strategy/file_exact_regex"
+require "logstash/filters/fetch_strategy/file_regex_union"
+
 require_relative "single_value_update"
 require_relative "array_of_values_update"
 require_relative "array_of_maps_value_update"

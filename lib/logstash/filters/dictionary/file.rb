@@ -27,67 +27,34 @@ module LogStash module Filters module Dictionary
     end
 
     include LogStash::Util::Loggable
-    attr_reader :dictionary
+    attr_reader :dictionary, :fetch_strategy
 
     def initialize(path, refresh_interval, exact, regex)
-      @exact = exact
-      @regex = regex
-      @use_regex_hash = false
-      @use_regex_union = false
       @dictionary_path = path
       @refresh_interval = refresh_interval
       @short_refresh = @refresh_interval < 300.001
       rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
-      @read_lock = rw_lock.readLock
       @write_lock = rw_lock.writeLock
       @dictionary = Hash.new()
-      @keys_regex = Hash.new()
       @update_method = method(:merge_dictionary)
       initialize_for_file_type
       raise_exception = true
-      load_dictionary(raise_exception)
-      if @exact
-        using_regex_map if @regex
+      if exact
+        if regex
+          @fetch_strategy = FetchStrategy::FileExactRegex.new(@dictionary, rw_lock)
+        else
+          @fetch_strategy = FetchStrategy::FileExact.new(@dictionary, rw_lock)
+        end
       else
-        using_regex_union
+        @fetch_strategy = FetchStrategy::FileRegexUnion.new(@dictionary, rw_lock)
       end
+      load_dictionary(raise_exception)
       stop_scheduler
       start_scheduler unless @refresh_interval <= 0 # disabled, a scheduler interval of zero makes no sense
     end
 
     def initialize_for_file_type
       # sub class specific initializer
-    end
-
-    def using_regex_map
-      @use_regex_hash = true
-      build_regex_map
-    end
-
-    def using_regex_union
-      @use_regex_union = true
-      build_union_regex
-    end
-
-    def fetch(source)
-      if @exact
-        if @regex
-          @read_lock.lock
-          lock_for_read do
-            key = @dictionary.keys.detect{|k| source.match(@keys_regex[k])}
-            yield deep_clone(@dictionary[key]) if key
-          end
-        else
-          lock_for_read do
-            yield deep_clone(@dictionary[source]) if @dictionary.include?(source)
-          end
-        end
-      else
-        lock_for_read do
-          value = source.gsub(@union_regex_keys, @dictionary)
-          yield deep_clone(value) if source != value
-        end
-      end
     end
 
     def stop_scheduler
@@ -112,32 +79,10 @@ module LogStash module Filters module Dictionary
 
     private
 
-    def deep_clone(value)
-      LogStash::Util.deep_clone(value)
-    end
-
     def start_scheduler
       @scheduler = Rufus::Scheduler.new
       @scheduler.interval("#{@refresh_interval}s", :overlap => false) do
         reload_dictionary
-      end
-    end
-
-    def lock_for_read
-      @read_lock.lock
-      begin
-        yield
-      ensure
-        @read_lock.unlock
-      end
-    end
-
-    def lock_for_write
-      @write_lock.lock
-      begin
-        yield
-      ensure
-        @write_lock.unlock
       end
     end
 
@@ -146,34 +91,24 @@ module LogStash module Filters module Dictionary
     end
 
     def merge_dictionary
-      lock_for_write do
+      @write_lock.lock
+      begin
         read_file_into_dictionary
-        # rebuilding the regex map is time expensive
-        build_regex_map if @use_regex_hash
-        build_union_regex if @use_regex_union
+        @fetch_strategy.dictionary_updated
+      ensure
+        @write_lock.unlock
       end
     end
 
     def replace_dictionary
-      lock_for_write do
+      @write_lock.lock
+      begin
         @dictionary.clear
         read_file_into_dictionary
-        # rebuilding the regex map is time expensive
-        build_regex_map if @use_regex_hash
-        build_union_regex if @use_regex_union
+        @fetch_strategy.dictionary_updated
+      ensure
+        @write_lock.unlock
       end
-    end
-
-    def build_regex_map
-      @keys_regex.clear
-      # rebuilding the regex map is time expensive
-      # 100 000 keys takes 0.5 seconds on a high spec Macbook Pro
-      # at least we are not doing it for every event like before
-      @dictionary.keys.each{|k| @keys_regex[k] = Regexp.new(k)}
-    end
-
-    def build_union_regex
-      @union_regex_keys = Regexp.union(@dictionary.keys)
     end
 
     def reload_dictionary
