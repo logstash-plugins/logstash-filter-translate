@@ -8,14 +8,6 @@ require "logstash/filters/dictionary/csv_file"
 require "logstash/filters/dictionary/yaml_file"
 require "logstash/filters/dictionary/json_file"
 
-require "logstash/filters/fetch_strategy/memory_exact"
-require "logstash/filters/fetch_strategy/memory_exact_regex"
-require "logstash/filters/fetch_strategy/memory_regex_union"
-
-require "logstash/filters/fetch_strategy/file_exact"
-require "logstash/filters/fetch_strategy/file_exact_regex"
-require "logstash/filters/fetch_strategy/file_regex_union"
-
 require_relative "single_value_update"
 require_relative "array_of_values_update"
 require_relative "array_of_maps_value_update"
@@ -197,12 +189,8 @@ class Translate < LogStash::Filters::Base
 
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)
-
     begin
-      #If source field is array use first value and make sure source value is string
-      matched = @updater.update(event)
-
-      filter_matched(event) if matched || @field == @destination
+      filter_matched(event) if @updater.update(event) || @field == @destination
     rescue Exception => e
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end

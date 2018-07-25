@@ -1,6 +1,7 @@
 # encoding: utf-8
 require 'rufus-scheduler'
 require "logstash/util/loggable"
+require "logstash/filters/fetch_strategy/file"
 
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
@@ -41,12 +42,12 @@ module LogStash module Filters module Dictionary
       raise_exception = true
       if exact
         if regex
-          @fetch_strategy = FetchStrategy::FileExactRegex.new(@dictionary, rw_lock)
+          @fetch_strategy = FetchStrategy::File::ExactRegex.new(@dictionary, rw_lock)
         else
-          @fetch_strategy = FetchStrategy::FileExact.new(@dictionary, rw_lock)
+          @fetch_strategy = FetchStrategy::File::Exact.new(@dictionary, rw_lock)
         end
       else
-        @fetch_strategy = FetchStrategy::FileRegexUnion.new(@dictionary, rw_lock)
+        @fetch_strategy = FetchStrategy::File::RegexUnion.new(@dictionary, rw_lock)
       end
       load_dictionary(raise_exception)
       stop_scheduler

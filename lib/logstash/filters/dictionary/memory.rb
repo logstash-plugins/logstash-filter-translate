@@ -1,4 +1,6 @@
 # encoding: utf-8
+require "logstash/filters/fetch_strategy/memory"
+
 module LogStash module Filters module Dictionary
   class Memory
 
@@ -7,13 +9,17 @@ module LogStash module Filters module Dictionary
     def initialize(hash, exact, regex)
       if exact
         if regex
-          @fetch_strategy = FetchStrategy::MemoryExactRegex.new(hash)
+          @fetch_strategy = FetchStrategy::Memory::ExactRegex.new(hash)
         else
-          @fetch_strategy = FetchStrategy::MemoryExact.new(hash)
+          @fetch_strategy = FetchStrategy::Memory::Exact.new(hash)
         end
       else
-        @fetch_strategy = FetchStrategy::MemoryRegexUnion.new(hash)
+        @fetch_strategy = FetchStrategy::Memory::RegexUnion.new(hash)
       end
+    end
+
+    def stop_scheduler
+      # noop
     end
 
     private
@@ -23,10 +29,6 @@ module LogStash module Filters module Dictionary
     end
 
     def load_dictionary(raise_exception=false)
-      # noop
-    end
-
-    def stop_scheduler
       # noop
     end
   end

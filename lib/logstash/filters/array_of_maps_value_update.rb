@@ -12,9 +12,7 @@ module LogStash module Filters
     end
 
     def test_for_inclusion(event, override)
-      # Skip translation in case event does not have @event field.
-      return true if event.include?(@iterate_on)
-      false
+      event.include?(@iterate_on)
     end
 
     def update(event)
@@ -25,11 +23,13 @@ module LogStash module Filters
         nested_field = "#{@iterate_on}[#{index}]#{@field}"
         nested_destination = "#{@iterate_on}[#{index}]#{@destination}"
         inner = event.get(nested_field)
-        @lookup.fetch_strategy.fetch(inner) do |value|
-          event.set(nested_destination, value)
+        next if inner.nil?
+        matched = [true, nil]
+        @lookup.fetch_strategy.fetch(inner, matched)
+        if matched.first
+          event.set(nested_destination, matched.last)
           matches[index] = true
-        end
-        if @use_fallback && !matches[index]
+        elsif @use_fallback
           event.set(nested_destination, event.sprintf(@fallback))
           matches[index] = true
         end

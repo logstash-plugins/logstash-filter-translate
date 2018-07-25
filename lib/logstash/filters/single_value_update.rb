@@ -11,27 +11,23 @@ module LogStash module Filters
     end
 
     def test_for_inclusion(event, override)
-      # Skip translation in case event does not have @event field.
-      return true if event.include?(@field)
       # Skip translation in case @destination field already exists and @override is disabled.
-      return true if event.include?(@destination) && override
-      false
+      return false if event.include?(@destination) && !override
+      event.include?(@field)
     end
 
     def update(event)
-      val = event.get(@field)
-      source = val.is_a?(Array) ? val.first.to_s : val.to_s
-      matched = false
-      @lookup.fetch_strategy.fetch(source) do |value|
-        event.set(@destination, value)
-        matched = true
-      end
-
-      if @use_fallback && !matched
+      # If source field is array use first value and make sure source value is string
+      source = Array(event.get(@field)).first.to_s
+      matched = [true, nil]
+      @lookup.fetch_strategy.fetch(source, matched)
+      if matched.first
+        event.set(@destination, matched.last)
+      elsif @use_fallback
         event.set(@destination, event.sprintf(@fallback))
-        matched = true
+        matched[0] = true
       end
-      return matched
+      return matched.first
     end
   end
 end end

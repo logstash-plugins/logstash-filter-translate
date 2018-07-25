@@ -24,7 +24,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'rufus-scheduler'
 
   if RUBY_VERSION.start_with?("1")
-    s.add_runtime_dependency 'rake', '~> 12.2.0'
+    s.add_runtime_dependency 'rake', '~> 12.1.0'
   end
 
   s.add_development_dependency 'logstash-devutils'
