@@ -1,4 +1,4 @@
-## 3.1.1
+## 3.2.0
   - Add `iterate_on` setting to support fields that are arrays, see the docs
   for detailed explanation.
   [#66](https://github.com/logstash-plugins/logstash-filter-translate/issues/66)

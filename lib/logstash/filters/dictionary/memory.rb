@@ -8,11 +8,7 @@ module LogStash module Filters module Dictionary
 
     def initialize(hash, exact, regex)
       if exact
-        if regex
-          @fetch_strategy = FetchStrategy::Memory::ExactRegex.new(hash)
-        else
-          @fetch_strategy = FetchStrategy::Memory::Exact.new(hash)
-        end
+        @fetch_strategy = regex ? FetchStrategy::Memory::ExactRegex.new(hash) : FetchStrategy::Memory::Exact.new(hash)
       else
         @fetch_strategy = FetchStrategy::Memory::RegexUnion.new(hash)
       end

@@ -4,6 +4,9 @@ require_relative "yaml_visitor"
 
 module LogStash module Filters module Dictionary
   class YamlFile < File
+
+    protected
+
     def initialize_for_file_type
       @visitor = YamlVisitor.create
     end

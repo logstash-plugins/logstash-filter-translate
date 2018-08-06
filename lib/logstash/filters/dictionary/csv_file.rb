@@ -3,6 +3,9 @@ require "csv"
 
 module LogStash module Filters module Dictionary
   class CsvFile < File
+
+    protected
+
     def initialize_for_file_type
       @io = StringIO.new("")
       @csv = CSV.new(@io)

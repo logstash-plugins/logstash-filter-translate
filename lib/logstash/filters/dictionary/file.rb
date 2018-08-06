@@ -1,4 +1,5 @@
 # encoding: utf-8
+require 'concurrent/atomic/atomic_boolean'
 require 'rufus-scheduler'
 require "logstash/util/loggable"
 require "logstash/filters/fetch_strategy/file"
@@ -6,6 +7,8 @@ require "logstash/filters/fetch_strategy/file"
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 
 module LogStash module Filters module Dictionary
+  class DictionaryFileError < StandardError; end
+
   class File
     def self.create(path, refresh_interval, refresh_behaviour, exact, regex)
       if /\.y[a]?ml$/.match(path)
@@ -33,32 +36,26 @@ module LogStash module Filters module Dictionary
     def initialize(path, refresh_interval, exact, regex)
       @dictionary_path = path
       @refresh_interval = refresh_interval
-      @short_refresh = @refresh_interval < 300.001
+      @short_refresh = @refresh_interval <= 300
+      @stopping = Concurrent::AtomicBoolean.new # ported from jdbc_static, need a way to prevent a scheduled execution from running a load.
       rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
       @write_lock = rw_lock.writeLock
-      @dictionary = Hash.new()
+      @dictionary = Hash.new
       @update_method = method(:merge_dictionary)
       initialize_for_file_type
-      raise_exception = true
+      args = [@dictionary, rw_lock]
       if exact
-        if regex
-          @fetch_strategy = FetchStrategy::File::ExactRegex.new(@dictionary, rw_lock)
-        else
-          @fetch_strategy = FetchStrategy::File::Exact.new(@dictionary, rw_lock)
-        end
+        @fetch_strategy = regex ? FetchStrategy::File::ExactRegex.new(*args) : FetchStrategy::File::ExactRegex.new(*args)
       else
-        @fetch_strategy = FetchStrategy::File::RegexUnion.new(@dictionary, rw_lock)
+        @fetch_strategy = FetchStrategy::File::RegexUnion.new(*args)
       end
-      load_dictionary(raise_exception)
-      stop_scheduler
+      load_dictionary(raise_exception = true)
+      stop_scheduler(initial = true)
       start_scheduler unless @refresh_interval <= 0 # disabled, a scheduler interval of zero makes no sense
     end
 
-    def initialize_for_file_type
-      # sub class specific initializer
-    end
-
-    def stop_scheduler
+    def stop_scheduler(initial = false)
+      @stopping.make_true unless initial
       @scheduler.shutdown(:wait) if @scheduler
     end
 
@@ -78,6 +75,16 @@ module LogStash module Filters module Dictionary
       self
     end
 
+    protected
+
+    def initialize_for_file_type
+      # sub class specific initializer
+    end
+
+    def read_file_into_dictionary
+      # defined in csv_file, yaml_file and json_file
+    end
+
     private
 
     def start_scheduler
@@ -85,10 +92,6 @@ module LogStash module Filters module Dictionary
       @scheduler.interval("#{@refresh_interval}s", :overlap => false) do
         reload_dictionary
       end
-    end
-
-    def read_file_into_dictionary
-      # defined in csv_file, yaml_file and json_file
     end
 
     def merge_dictionary
@@ -113,6 +116,7 @@ module LogStash module Filters module Dictionary
     end
 
     def reload_dictionary
+      return if @stopping.true?
       if @short_refresh
         load_dictionary if needs_refresh?
       else
@@ -127,7 +131,7 @@ module LogStash module Filters module Dictionary
     def loading_exception(e, raise_exception)
       msg = "Translate: #{e.message} when loading dictionary file at #{@dictionary_path}"
       if raise_exception
-        raise RuntimeError.new(msg)
+        raise DictionaryFileError.new(msg)
       else
         @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
