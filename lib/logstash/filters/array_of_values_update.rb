@@ -6,7 +6,7 @@ module LogStash module Filters
       @iterate_on = iterate_on
       @destination = destination
       @fallback = fallback
-      @use_fallback = !fallback.nil?
+      @use_fallback = !fallback.nil? # fallback is not nil, the user set a value in the config
       @lookup = lookup
     end
 

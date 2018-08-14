@@ -7,7 +7,7 @@ module LogStash module Filters
       @field = ensure_reference_format(field)
       @destination = ensure_reference_format(destination)
       @fallback = fallback
-      @use_fallback = !fallback.nil?
+      @use_fallback = !fallback.nil? # fallback is not nil, the user set a value in the config
       @lookup = lookup
     end
 
