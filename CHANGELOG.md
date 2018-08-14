@@ -1,3 +1,11 @@
+## 3.2.0
+  - Add `iterate_on` setting to support fields that are arrays, see the docs
+  for detailed explanation.
+  [#66](https://github.com/logstash-plugins/logstash-filter-translate/issues/66)
+  - Add Rufus::Scheduler to provide asynchronous loading of dictionary.
+  [#65](https://github.com/logstash-plugins/logstash-filter-translate/issues/65)
+  - Re-organise code, yields performance improvement of around 360%
+
 ## 3.1.0
   - Add 'refresh_behaviour' to either 'merge' or 'replace' during a refresh #57
 
