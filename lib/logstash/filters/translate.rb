@@ -1,6 +1,7 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
+require "logstash-loggable-bwc"
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -11,6 +12,7 @@ require "logstash/filters/dictionary/json_file"
 require_relative "single_value_update"
 require_relative "array_of_values_update"
 require_relative "array_of_maps_value_update"
+
 # A general search and replace tool that uses a configured hash
 # and/or a file to determine replacement values. Currently supported are
 # YAML, JSON, and CSV files.

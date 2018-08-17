@@ -1,3 +1,6 @@
+## 3.2.1
+  - Add Loggable backward compatible support via logstash-loggable-bwc gem.
+
 ## 3.2.0
   - Add `iterate_on` setting to support fields that are arrays, see the docs
   for detailed explanation.

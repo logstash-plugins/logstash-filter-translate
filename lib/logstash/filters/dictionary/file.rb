@@ -1,7 +1,6 @@
 # encoding: utf-8
 require 'concurrent/atomic/atomic_boolean'
 require 'rufus-scheduler'
-require "logstash/util/loggable"
 require "logstash/filters/fetch_strategy/file"
 
 java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
@@ -30,13 +29,15 @@ module LogStash module Filters module Dictionary
       end
     end
 
+    FILE_MODIFIED_CHECK_THRESHOLD = 300 # seconds
+
     include LogStash::Util::Loggable
     attr_reader :dictionary, :fetch_strategy
 
     def initialize(path, refresh_interval, exact, regex)
       @dictionary_path = path
       @refresh_interval = refresh_interval
-      @short_refresh = @refresh_interval <= 300
+      @short_refresh = @refresh_interval <= FILE_MODIFIED_CHECK_THRESHOLD
       @stopping = Concurrent::AtomicBoolean.new # ported from jdbc_static, need a way to prevent a scheduled execution from running a load.
       rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
       @write_lock = rw_lock.writeLock
@@ -49,6 +50,7 @@ module LogStash module Filters module Dictionary
       else
         @fetch_strategy = FetchStrategy::File::RegexUnion.new(*args)
       end
+      logger.info("Translate: Attempting to load dictionary for the first time", :path => @dictionary_path)
       load_dictionary(raise_exception = true)
       stop_scheduler(initial = true)
       start_scheduler unless @refresh_interval <= 0 # disabled, a scheduler interval of zero makes no sense
@@ -64,7 +66,7 @@ module LogStash module Filters module Dictionary
         @dictionary_mtime = ::File.mtime(@dictionary_path).to_f
         @update_method.call
       rescue Errno::ENOENT
-        @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+        logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       rescue => e
         loading_exception(e, raise_exception)
       end
@@ -133,7 +135,7 @@ module LogStash module Filters module Dictionary
       if raise_exception
         raise DictionaryFileError.new(msg)
       else
-        @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
+        logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
     end
   end
