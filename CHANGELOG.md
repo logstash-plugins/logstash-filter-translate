@@ -1,3 +1,6 @@
+## 3.2.1
+  - Updated formatting of examples in documentation for consistent rendering
+
 ## 3.2.0
   - Add `iterate_on` setting to support fields that are arrays, see the docs
   for detailed explanation.
