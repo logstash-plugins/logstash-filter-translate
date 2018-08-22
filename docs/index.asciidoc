@@ -37,8 +37,8 @@ the `destination` field, but on no match the `fallback` setting string is
 used instead.
 
 Example:
-```
 [source,ruby]
+----
     filter {
       translate {
         field => "[http_status]"
@@ -52,7 +52,7 @@ Example:
         fallback => "I'm a teapot"
       }
     }
-```
+----
 
 Occasionally, people find that they have a field with a variable sized array of
 values or objects that need some enrichment. The `iterate_on` setting helps in
@@ -125,6 +125,7 @@ configuration item (i.e. do not use the `@dictionary_path` file).
 
 Example:
 [source,ruby]
+----
     filter {
       translate {
         dictionary => {
@@ -135,6 +136,7 @@ Example:
         }
       }
     }
+----
 
 NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 
@@ -147,13 +149,16 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 The full path of the external dictionary file. The format of the table
 should be a standard YAML, JSON, or CSV. Make sure you specify any integer-based keys
 in quotes. For example, the YAML file should look something like this:
+
 [source,ruby]
+----
     "100": Continue
     "101": Switching Protocols
     merci: gracias
     old version: new version
+----
 
-NOTE: it is an error to specify both `dictionary` and `dictionary_path`.
+NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 
 The currently supported formats are YAML, JSON, and CSV. Format selection is
 based on the file extension: `json` for JSON, `yaml` or `yml` for YAML, and
@@ -173,7 +178,9 @@ destination field's data, with the translated value substituted in-place.
 
 For example, consider this simple translation.yml, configured to check the `data` field:
 [source,ruby]
+----
     foo: bar
+----
 
 If logstash receives an event with the `data` field set to `foo`, and `exact => true`,
 the destination field will be populated with the string `bar`.
@@ -195,7 +202,9 @@ translation string, which will always populate `field`, if the match failed.
 
 For example, if we have configured `fallback => "no match"`, using this dictionary:
 [source,ruby]
+----
     foo: bar
+----
 
 Then, if logstash received an event with the field `foo` set to `bar`, the destination
 field would be set to `bar`. However, if logstash received an event with `foo` set to `nope`,
@@ -235,10 +244,12 @@ to with `destination`.
 
 For a dictionary of:
 [source,csv]
+----
   100,Yuki
   101,Rupert
   102,Ahmed
   103,Kwame
+----
 
 Example of Mode 1
 [source,ruby]
