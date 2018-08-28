@@ -1,3 +1,6 @@
+## 3.2.3
+  - Added info to dictionary_path description to explain why integers must be quoted
+
 ## 3.2.2
   - Fix bug in csv_file when LS config has CSV filter plugin specified as well as a csv dictionary.
   [#70](https://github.com/logstash-plugins/logstash-filter-translate/issues/70)

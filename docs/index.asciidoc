@@ -24,11 +24,14 @@ A general search and replace tool that uses a configured hash
 and/or a file to determine replacement values. Currently supported are
 YAML, JSON, and CSV files. Each dictionary item is a key value pair.
 
-The dictionary entries can be specified in one of two ways: First,
-the `dictionary` configuration item may contain a hash representing
-the mapping. Second, an external file (readable by logstash) may be specified
-in the `dictionary_path` configuration item. These two methods may not be used
-in conjunction; it will produce an error.
+The dictionary entries can be specified in one of two ways: 
+
+* The `dictionary` configuration item can contain a hash representing
+the mapping. 
+* An external file (readable by logstash) may be specified in the
+`dictionary_path` configuration item. 
+
+These two methods may not be used in conjunction; it will produce an error.
 
 Operationally, for each event, the value from the `field` setting is tested
 against the dictionary and if it matches exactly (or matches a regex when
@@ -146,9 +149,11 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
   * Value type is <<path,path>>
   * There is no default value for this setting.
 
-The full path of the external dictionary file. The format of the table
-should be a standard YAML, JSON, or CSV. Make sure you specify any integer-based keys
-in quotes. For example, the YAML file should look something like this:
+The full path of the external dictionary file. The format of the table should be
+a standard YAML, JSON, or CSV. Specify any integer-based keys in quotes. The
+parser is expecting a string, and the quotes make the integer-based keys
+function as a string. For example, the YAML file should look something like
+this:
 
 [source,ruby]
 ----
