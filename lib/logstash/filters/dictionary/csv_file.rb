@@ -8,7 +8,7 @@ module LogStash module Filters module Dictionary
 
     def initialize_for_file_type
       @io = StringIO.new("")
-      @csv = CSV.new(@io)
+      @csv = ::CSV.new(@io)
     end
 
     def read_file_into_dictionary

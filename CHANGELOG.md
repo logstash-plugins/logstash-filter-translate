@@ -1,3 +1,7 @@
+## 3.2.2
+  - Fix bug in csv_file when LS config has CSV filter plugin specified as well as a csv dictionary.
+  [#70](https://github.com/logstash-plugins/logstash-filter-translate/issues/70)
+
 ## 3.2.1
   - Updated formatting of examples in documentation for consistent rendering
 
