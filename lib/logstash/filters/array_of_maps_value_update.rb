@@ -25,7 +25,7 @@ module LogStash module Filters
         inner = event.get(nested_field)
         next if inner.nil?
         matched = [true, nil]
-        @lookup.fetch_strategy.fetch(inner, matched)
+        @lookup.fetch_strategy.fetch(inner.to_s, matched)
         if matched.first
           event.set(nested_destination, matched.last)
           matches[index] = true
