@@ -1,4 +1,4 @@
-## 3.2.3
+## master
   - Added info to dictionary_path description to explain why integers must be quoted
 
 ## 3.2.2

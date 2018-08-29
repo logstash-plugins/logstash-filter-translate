@@ -24,7 +24,7 @@ A general search and replace tool that uses a configured hash
 and/or a file to determine replacement values. Currently supported are
 YAML, JSON, and CSV files. Each dictionary item is a key value pair.
 
-The dictionary entries can be specified in one of two ways: 
+You can specify dictionary entries in one of two ways: 
 
 * The `dictionary` configuration item can contain a hash representing
 the mapping. 
@@ -150,10 +150,13 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
   * There is no default value for this setting.
 
 The full path of the external dictionary file. The format of the table should be
-a standard YAML, JSON, or CSV. Specify any integer-based keys in quotes. The
-parser is expecting a string, and the quotes make the integer-based keys
-function as a string. For example, the YAML file should look something like
-this:
+a standard YAML, JSON, or CSV. 
+
+Specify any integer-based keys in quotes. The
+value taken from the event's `field` setting is converted to a string. The
+lookup dictionary keys must also be strings, and the quotes make the
+integer-based keys function as a string. For example, the YAML file should look
+something like this:
 
 [source,ruby]
 ----
@@ -359,8 +362,10 @@ A value of zero or less will disable refresh.
   * Value type is <<boolean,boolean>>
   * Default value is `false`
 
-If you'd like to treat dictionary keys as regular expressions, set `regex => true`.
-Note: this is activated only when `exact => true`.
+To treat dictionary keys as regular expressions, set `regex => true`.
+
+Be sure to escape dictionary key strings for use with regex.
+Resources on regex formatting are available online.
 
 [id="plugins-{type}s-{plugin}-refresh_behaviour"]
 ===== `refresh_behaviour`
