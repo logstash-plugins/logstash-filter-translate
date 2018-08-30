@@ -31,6 +31,29 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  describe "translation fails when regex setting is false but keys are regex based" do
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "^2\\d\\d", "OK",
+                           "^3\\d\\d", "Redirect",
+                           "^4\\d\\d", "Client Error",
+                           "^5\\d\\d", "Server Error" ],
+        "exact"       => true,
+        "regex"       => false
+      }
+    end
+
+    let(:event) { LogStash::Event.new("status" => 200) }
+
+    it "does not return the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event.get("translation")).to be_nil
+    end
+  end
 
   describe "multi translation" do
     context "when using an inline dictionary" do
