@@ -7,11 +7,12 @@ module LogStash module Filters module Dictionary
     attr_reader :dictionary, :fetch_strategy
 
     def initialize(hash, exact, regex)
-      if exact
-        @fetch_strategy = regex ? FetchStrategy::Memory::ExactRegex.new(hash) : FetchStrategy::Memory::Exact.new(hash)
-      else
-        @fetch_strategy = FetchStrategy::Memory::RegexUnion.new(hash)
-      end
+      klass = case
+              when exact && regex then FetchStrategy::Memory::ExactRegex
+              when exact          then FetchStrategy::Memory::Exact
+              else                     FetchStrategy::Memory::RegexUnion
+              end
+      @fetch_strategy = klass.new(hash)
     end
 
     def stop_scheduler

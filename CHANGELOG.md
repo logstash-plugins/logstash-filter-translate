@@ -1,4 +1,5 @@
 ## master
+  - Fix bug in dictionary/file the always applied RegexExact, manifested when dictionary keys are not regex compatible [Logstash #9936](https://github.com/elastic/logstash/issues/9936)
   - Added info to dictionary_path description to explain why integers must be quoted
 
 ## 3.2.2

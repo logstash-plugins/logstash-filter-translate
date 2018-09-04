@@ -44,11 +44,12 @@ module LogStash module Filters module Dictionary
       @update_method = method(:merge_dictionary)
       initialize_for_file_type
       args = [@dictionary, rw_lock]
-      if exact
-        @fetch_strategy = regex ? FetchStrategy::File::ExactRegex.new(*args) : FetchStrategy::File::ExactRegex.new(*args)
-      else
-        @fetch_strategy = FetchStrategy::File::RegexUnion.new(*args)
-      end
+      klass = case
+              when exact && regex then FetchStrategy::File::ExactRegex
+              when exact          then FetchStrategy::File::Exact
+              else                     FetchStrategy::File::RegexUnion
+              end
+      @fetch_strategy = klass.new(*args)
       load_dictionary(raise_exception = true)
       stop_scheduler(initial = true)
       start_scheduler unless @refresh_interval <= 0 # disabled, a scheduler interval of zero makes no sense
@@ -131,7 +132,9 @@ module LogStash module Filters module Dictionary
     def loading_exception(e, raise_exception)
       msg = "Translate: #{e.message} when loading dictionary file at #{@dictionary_path}"
       if raise_exception
-        raise DictionaryFileError.new(msg)
+        dfe = DictionaryFileError.new(msg)
+        dfe.set_backtrace(e.backtrace)
+        raise dfe
       else
         @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
