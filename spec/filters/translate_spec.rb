@@ -2,6 +2,12 @@
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/filters/translate"
 
+module TranslateUtil
+  def self.build_fixture_path(filename)
+    File.join(File.dirname(__FILE__), "..", "fixtures", filename)
+  end
+end
+
 describe LogStash::Filters::Translate do
 
   let(:config) { Hash.new }
@@ -24,7 +30,7 @@ describe LogStash::Filters::Translate do
 
     let(:event) { LogStash::Event.new("status" => 200) }
 
-    it "return the exact translation" do
+    it "coerces field to a string then returns the exact translation" do
       subject.register
       subject.filter(event)
       expect(event.get("translation")).to eq("OK")
@@ -80,7 +86,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a file based dictionary" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "regex_union_dict.csv") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
       let(:config) do
         {
           "field"       => "status",
@@ -127,7 +133,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a file based dictionary" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "regex_dict.csv") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_dict.csv") }
       let(:config) do
         {
           "field"       => "status",
@@ -190,7 +196,7 @@ describe LogStash::Filters::Translate do
 
   describe "loading a dictionary" do
 
-    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict-wrong.yml") }
+    let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict-wrong.yml") }
 
     let(:config) do
       {
@@ -209,7 +215,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a yml file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
       let(:event) { LogStash::Event.new("status" => "a") }
 
       it "return the exact translation" do
@@ -220,7 +226,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a map tagged yml file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
       let(:event) { LogStash::Event.new("status" => "six") }
 
       it "return the exact translation" do
@@ -231,7 +237,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a omap tagged yml file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-omap-dict.yml") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-omap-dict.yml") }
       let(:event) { LogStash::Event.new("status" => "nine") }
 
       it "return the exact translation" do
@@ -242,7 +248,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a json file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.json") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.json") }
       let(:event) { LogStash::Event.new("status" => "b") }
 
       it "return the exact translation" do
@@ -253,7 +259,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using a csv file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.csv") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.csv") }
       let(:event) { LogStash::Event.new("status" => "c") }
 
       it "return the exact translation" do
@@ -264,7 +270,7 @@ describe LogStash::Filters::Translate do
     end
 
     context "when using an unknown file" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.other") }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.other") }
 
       it "raises error" do
         expect { subject.register }.to raise_error(RuntimeError, /Dictionary #{dictionary_path} has a non valid format/)
@@ -273,20 +279,21 @@ describe LogStash::Filters::Translate do
   end
 
   describe "iterate_on functionality" do
-    describe "when iterate_on is the same as field, AKA array of values" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
-      let(:config) do
-        {
-          "iterate_on"          => "foo",
-          "field"            => "foo",
-          "destination"      => "baz",
-          "fallback"         => "nooo",
-          "dictionary_path"  => dictionary_path,
-          # "override"         => true,
-          "refresh_interval" => 0
-        }
-      end
+    let(:config) do
+      {
+        "iterate_on"       => "foo",
+        "field"            => iterate_on_field,
+        "destination"      => "baz",
+        "fallback"         => "nooo",
+        "dictionary_path"  => dictionary_path,
+        # "override"         => true,
+        "refresh_interval" => 0
+      }
+    end
+    let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
 
+    describe "when iterate_on is the same as field, AKA array of values" do
+      let(:iterate_on_field) { "foo" }
       let(:event) { LogStash::Event.new("foo" => ["nine","eight", "seven"]) }
       it "adds a translation to destination array for each value in field array" do
         subject.register
@@ -295,20 +302,19 @@ describe LogStash::Filters::Translate do
       end
     end
 
-    describe "when iterate_on is not the same as field, AKA array of objects" do
-      let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
-      let(:config) do
-        {
-          "iterate_on"          => "foo",
-          "field"            => "bar",
-          "destination"      => "baz",
-          "fallback"         => "nooo",
-          "dictionary_path"  => dictionary_path,
-          # "override"         => true,
-          "refresh_interval" => 0
-        }
+    describe "when iterate_on is the same as field, AKA array of values, coerces integer elements to strings" do
+      let(:iterate_on_field) { "foo" }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
+      let(:event) { LogStash::Event.new("foo" => [200, 300, 400]) }
+      it "adds a translation to destination array for each value in field array" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("baz")).to eq(["OK","Redirect","Client Error"])
       end
+    end
 
+    describe "when iterate_on is not the same as field, AKA array of objects" do
+      let(:iterate_on_field) { "bar" }
       let(:event) { LogStash::Event.new("foo" => [{"bar"=>"two"},{"bar"=>"one"}, {"bar"=>"six"}]) }
       it "adds a translation to each map" do
         subject.register
@@ -318,10 +324,23 @@ describe LogStash::Filters::Translate do
         expect(event.get("[foo][2][baz]")).to eq("val-6-1|val-6-2")
       end
     end
+
+    describe "when iterate_on is not the same as field, AKA array of objects, coerces integer values to strings" do
+      let(:iterate_on_field) { "bar" }
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
+      let(:event) { LogStash::Event.new("foo" => [{"bar"=>200},{"bar"=>300}, {"bar"=>400}]) }
+      it "adds a translation to each map" do
+        subject.register
+        subject.filter(event)
+        expect(event.get("[foo][0][baz]")).to eq("OK")
+        expect(event.get("[foo][1][baz]")).to eq("Redirect")
+        expect(event.get("[foo][2][baz]")).to eq("Client Error")
+      end
+    end
   end
 
   describe "field and destination are the same (needs override)" do
-    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "tag-map-dict.yml") }
+    let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
     let(:config) do
       {
         "field"            => "foo",
@@ -342,7 +361,7 @@ describe LogStash::Filters::Translate do
   end
 
   describe "general configuration" do
-    let(:dictionary_path)  { File.join(File.dirname(__FILE__), "..", "fixtures", "dict.yml") }
+    let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
     let(:config) do
       {
         "field"            => "random field",
