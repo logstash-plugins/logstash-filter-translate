@@ -499,4 +499,54 @@ describe LogStash::Filters::Translate do
       end
     end
   end
+
+  describe "dnynamic translation" do
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "200", "O%{[other]}K",
+                           "300", "Redirect",
+                           "400", "Client Error",
+                           "500", "Server Error" ],
+        "exact"       => true,
+        "regex"       => false,
+        "dynamic"     => true
+      }
+    end
+
+    let(:event) { LogStash::Event.new("status" => 200, "other" => "test123") }
+
+    it "coerces field to a string then returns the exact translation" do
+      subject.register
+      subject.filter(event)
+      expect(event.get("translation")).to eq("Otest123K")
+    end
+  end
+
+  describe "non-dynamic translation" do
+
+    let(:config) do
+      {
+        "field"       => "status",
+        "destination" => "translation",
+        "dictionary"  => [ "200", "OK",
+                           "300", "Redirect",
+                           "400", "Client Error",
+                           "500", "Server Error",
+                           "testdyn", "some%{[other]}value" ],
+        "exact"       => true,
+        "regex"       => false
+      }
+    end
+
+    let(:event) { LogStash::Event.new("status" => "testdyn", "other" => "test123") }
+
+    it "won't use dynamic evaluation when disabled" do
+      subject.register
+      subject.filter(event)
+      expect(event.get("translation")).to eq("some%{[other]}value")
+    end
+  end
 end

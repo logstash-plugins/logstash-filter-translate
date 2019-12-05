@@ -150,6 +150,9 @@ class Translate < LogStash::Filters::Base
   # the field to write the looked up value (or the `fallback` value) to with `destination`
   config :iterate_on, :validate => :string
 
+  # If you'd like dictionary values to be evaluated dynamically set `dynamic => true`.
+  config :dynamic, :validate => :boolean, :default => false
+
   attr_reader :lookup # for testing reloading
 
   def register
@@ -168,11 +171,11 @@ class Translate < LogStash::Filters::Base
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
     if @iterate_on.nil?
-      @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup)
+      @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup, @dynamic)
     elsif @iterate_on == @field
-      @updater = ArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup)
+      @updater = ArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup, @dynamic)
     else
-      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup)
+      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup, @dynamic)
     end
 
     @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)

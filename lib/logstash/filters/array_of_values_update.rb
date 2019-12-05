@@ -9,12 +9,13 @@ module LogStash module Filters
       def call(source) Array(source); end
     end
 
-    def initialize(iterate_on, destination, fallback, lookup)
+    def initialize(iterate_on, destination, fallback, lookup, dynamic)
       @iterate_on = iterate_on
       @destination = destination
       @fallback = fallback
       @use_fallback = !fallback.nil? # fallback is not nil, the user set a value in the config
       @lookup = lookup
+      @dynamic = dynamic
       @coercers_table = {}
       @coercers_table.default = CoerceOther.new
       @coercers_table[Array] = CoerceArray.new
@@ -37,7 +38,7 @@ module LogStash module Filters
         matched = [true, nil]
         @lookup.fetch_strategy.fetch(inner.to_s, matched)
         if matched.first
-          target[index] = matched.last
+          target[index] = @dynamic ? event.sprintf(matched.last) : matched.last
         end
       end
       event.set(@destination, target)
