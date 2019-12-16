@@ -5,9 +5,9 @@ require "support/build_huge_dictionaries"
 
 require "rspec_sequencing"
 
-require "logstash/filters/translate"
+require "logstash/filters/dyntranslate"
 
-describe LogStash::Filters::Translate do
+describe LogStash::Filters::DynTranslate do
   let(:directory) { Pathname.new(Stud::Temporary.directory) }
   describe "scheduled reloading" do
     subject { described_class.new(config) }

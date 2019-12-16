@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
 
-  s.name            = 'logstash-filter-translate'
+  s.name            = 'logstash-filter-dyntranslate'
   s.version         = '3.2.3'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "Replaces field contents based on a hash or YAML file"

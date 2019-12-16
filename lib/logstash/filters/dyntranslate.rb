@@ -34,8 +34,8 @@ require_relative "array_of_maps_value_update"
 # Alternatively, for simple string search and replacements for just a few values
 # you might consider using the gsub function of the mutate filter.
 module LogStash module Filters
-class Translate < LogStash::Filters::Base
-  config_name "translate"
+class DynTranslate < LogStash::Filters::Base
+  config_name "dyntranslate"
 
   # The name of the logstash event field containing the value to be compared for a
   # match by the translate filter (e.g. `message`, `host`, `response_code`).

@@ -1,7 +1,7 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
 
-require "logstash/filters/translate"
+require "logstash/filters/dyntranslate"
 require "benchmark/ips"
 
 module BenchmarkingFileBuilder
@@ -19,7 +19,7 @@ module BenchmarkingFileBuilder
   end
 end
 
-describe LogStash::Filters::Translate do
+describe LogStash::Filters::DynTranslate do
   let(:directory) { Pathname.new(Stud::Temporary.directory) }
   let(:dictionary_name) { "dict-h.csv" }
   let(:dictionary_path) { directory.join(dictionary_name) }

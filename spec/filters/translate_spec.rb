@@ -1,6 +1,6 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
-require "logstash/filters/translate"
+require "logstash/filters/dyntranslate"
 
 module TranslateUtil
   def self.build_fixture_path(filename)
@@ -8,7 +8,7 @@ module TranslateUtil
   end
 end
 
-describe LogStash::Filters::Translate do
+describe LogStash::Filters::DynTranslate do
 
   let(:config) { Hash.new }
   subject { described_class.new(config) }
