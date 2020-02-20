@@ -113,7 +113,7 @@ filter plugins.
   * Default value is `"translation"`
 
 The destination field you wish to populate with the translated code. The default
-is a field named `translation`. Set this to the same value as source if you want
+is a field named `translation`. Set this to the same value as source (with `override => true`) if you want
 to do a substitution, in this case filter will allways succeed. This will clobber
 the old value of the source field!
 
