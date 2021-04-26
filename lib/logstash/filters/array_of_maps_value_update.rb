@@ -2,13 +2,14 @@
 
 module LogStash module Filters
   class ArrayOfMapsValueUpdate
-    def initialize(iterate_on, field, destination, fallback, lookup)
+    def initialize(iterate_on, field, destination, fallback, lookup, dynamic)
       @iterate_on = ensure_reference_format(iterate_on)
       @field = ensure_reference_format(field)
       @destination = ensure_reference_format(destination)
       @fallback = fallback
       @use_fallback = !fallback.nil? # fallback is not nil, the user set a value in the config
       @lookup = lookup
+      @dynamic = dynamic
     end
 
     def test_for_inclusion(event, override)
@@ -27,7 +28,7 @@ module LogStash module Filters
         matched = [true, nil]
         @lookup.fetch_strategy.fetch(inner.to_s, matched)
         if matched.first
-          event.set(nested_destination, matched.last)
+          event.set(nested_destination, @dynamic ? event.sprintf(matched.last) : matched.last)
           matches[index] = true
         elsif @use_fallback
           event.set(nested_destination, event.sprintf(@fallback))
