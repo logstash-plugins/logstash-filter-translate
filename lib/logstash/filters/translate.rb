@@ -97,9 +97,11 @@ class Translate < LogStash::Filters::Base
 
   # The destination field you wish to populate with the translated code. The default
   # is a field named `translation`. Set this to the same value as source if you want
-  # to do a substitution, in this case filter will allways succeed. This will clobber
-  # the old value of the source field!
-  config :destination, :validate => :string, :default => "translation"
+  # to do a substitution, in this case filter will always succeed.
+  # This will clobber the old value of the source field!
+  config :target, :validate => :string # :default => "translation" (legacy)
+  # effectively an alias for target
+  config :destination, :validate => :string
 
   # When `exact => true`, the translate filter will populate the destination field
   # with the exact contents of the dictionary value. When `exact => false`, the
@@ -171,12 +173,18 @@ class Translate < LogStash::Filters::Base
     else
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
+
+    if @target && @destination
+      raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
+    end
+    @target ||= @destination || 'translation'
+
     if @iterate_on.nil?
-      @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup)
+      @updater = SingleValueUpdate.new(@field, @target, @fallback, @lookup)
     elsif @iterate_on == @field
-      @updater = ArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup)
+      @updater = ArrayOfValuesUpdate.new(@iterate_on, @target, @fallback, @lookup)
     else
-      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup)
+      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @target, @fallback, @lookup)
     end
 
     @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
@@ -194,8 +202,8 @@ class Translate < LogStash::Filters::Base
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)
     begin
-      filter_matched(event) if @updater.update(event) || @field == @destination
     rescue Exception => e
+      filter_matched(event) if @updater.update(event) || @field == @target
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
     end
   end # def filter

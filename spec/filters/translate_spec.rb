@@ -18,7 +18,7 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "field"       => "status",
-        "destination" => "translation",
+        "target"      => "translation",
         "dictionary"  => [ "200", "OK",
                            "300", "Redirect",
                            "400", "Client Error",
@@ -42,7 +42,7 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "field"       => "status",
-        "destination" => "translation",
+        "target"      => "translation",
         "dictionary"  => [ "^2\\d\\d", "OK",
                            "^3\\d\\d", "Redirect",
                            "^4\\d\\d", "Client Error",
@@ -66,7 +66,7 @@ describe LogStash::Filters::Translate do
       let(:config) do
         {
           "field"       => "status",
-          "destination" => "translation",
+          "target"      => "translation",
           "dictionary"  => [ "200", "OK",
                              "300", "Redirect",
                              "400", "Client Error",
@@ -90,7 +90,7 @@ describe LogStash::Filters::Translate do
       let(:config) do
         {
           "field"       => "status",
-          "destination" => "translation",
+          "target"      => "translation",
           "dictionary_path" => dictionary_path,
           "refresh_interval" => 0,
           "exact"       => false,
@@ -113,7 +113,7 @@ describe LogStash::Filters::Translate do
       let(:config) do
         {
           "field"       => "status",
-          "destination" => "translation",
+          "target"      => "translation",
           "dictionary"  => [ "^2[0-9][0-9]$", "OK",
                              "^3[0-9][0-9]$", "Redirect",
                              "^4[0-9][0-9]$", "Client Error",
@@ -137,7 +137,7 @@ describe LogStash::Filters::Translate do
       let(:config) do
         {
           "field"       => "status",
-          "destination" => "translation",
+          "target"      => "translation",
           "dictionary_path" => dictionary_path,
           "refresh_interval" => 0,
           "exact"       => true,
@@ -160,8 +160,8 @@ describe LogStash::Filters::Translate do
     context "static configuration" do
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "field"    => "status",
+          "target"   => "translation",
           "fallback" => "no match"
         }
       end
@@ -178,8 +178,8 @@ describe LogStash::Filters::Translate do
     context "allow sprintf" do
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "field"    => "status",
+          "target"   => "translation",
           "fallback" => "%{missing_translation}"
         }
       end
@@ -201,7 +201,7 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "field"       => "status",
-        "destination" => "translation",
+        "target"      => "translation",
         "dictionary_path"  => dictionary_path,
         "refresh_interval" => -1,
         "exact"       => true,
@@ -360,7 +360,7 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "general configuration" do
+  context "invalid dictionary configuration" do
     let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
     let(:config) do
       {
@@ -375,6 +375,20 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  context "invalid target+dictionary configuration" do
+    let(:config) do
+      {
+          "field"       => "message",
+          "target"      => 'foo',
+          "destination" => 'bar',
+      }
+    end
+
+    it "raises an exception if both 'target' and 'destination' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
+    end
+  end
+
   describe "refresh_behaviour" do
     let(:dictionary_content) { "a : 1\nb : 2\nc : 3" }
     let(:modified_content) { "a : 1\nb : 4" }
@@ -383,7 +397,7 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "field" => "status",
-        "destination" => "translation",
+        "target" => "translation",
         "dictionary_path" => dictionary_path,
         "refresh_interval" => -1, # we're controlling this manually
         "exact" => true,
@@ -450,7 +464,7 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "field"       => "status",
-        "destination" => "translation",
+        "target"      => "translation",
         "dictionary_path"  => dictionary_path.to_path,
         "refresh_interval" => -1,
         "fallback" => "no match",
