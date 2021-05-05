@@ -1,6 +1,7 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
+require 'logstash/plugin_mixins/ecs_compatibility_support'
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -35,6 +36,9 @@ require_relative "array_of_maps_value_update"
 # you might consider using the gsub function of the mutate filter.
 module LogStash module Filters
 class Translate < LogStash::Filters::Base
+
+  include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1)
+
   config_name "translate"
 
   # The name of the logstash event field containing the value to be compared for a
