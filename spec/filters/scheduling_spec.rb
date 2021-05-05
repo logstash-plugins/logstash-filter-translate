@@ -1,4 +1,5 @@
 # encoding: utf-8
+require 'rspec/wait'
 require "logstash/devutils/rspec/spec_helper"
 require "support/rspec_wait_handler_helper"
 require "support/build_huge_dictionaries"
