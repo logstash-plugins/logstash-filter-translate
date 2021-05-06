@@ -52,7 +52,7 @@ class Translate < LogStash::Filters::Base
   # If the destination (or target) field already exists, this configuration item specifies
   # whether the filter should skip translation (default) or overwrite the target field
   # value with the new translation value.
-  config :override, :validate => :boolean, :default => false
+  config :override, :validate => :boolean # :default => false unless field == target
 
   # The dictionary to use for translation, when specified in the logstash filter
   # configuration item (i.e. do not use the `@dictionary_path` file).
@@ -179,6 +179,13 @@ class Translate < LogStash::Filters::Base
       raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
     end
     @target ||= @destination || ecs_select[disabled: 'translation', v1: @field]
+
+    if @field == @target
+      @override = true if @override.nil?
+      if @override.eql?(false)
+        raise LogStash::ConfigurationError, "Configuring `override => false` with in-place translation has no effect, please remove the option"
+      end
+    end
 
     if @iterate_on.nil?
       @updater = SingleValueUpdate.new(@field, @target, @fallback, @lookup)

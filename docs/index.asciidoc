@@ -363,11 +363,14 @@ After
 ===== `override`
 
   * Value type is <<boolean,boolean>>
-  * Default value is `false`
+  * Default value depends on whether in-place translation is being used
 
 If the destination (or target) field already exists, this configuration item specifies
-whether the filter should skip translation (default) or overwrite the target field
-value with the new translation value.
+whether the filter should skip translation (default behavior) or overwrite the target
+field value with the new translation value.
+
+In case of in-place translation, where `@target` is the same as `@field` (such as when
+<<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled), overwriting is allowed.
 
 [id="plugins-{type}s-{plugin}-refresh_interval"]
 ===== `refresh_interval`
