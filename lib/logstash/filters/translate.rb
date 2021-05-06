@@ -178,7 +178,7 @@ class Translate < LogStash::Filters::Base
     if @target && @destination
       raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
     end
-    @target ||= @destination || 'translation'
+    @target ||= @destination || ecs_select[disabled: 'translation', v1: @field]
 
     if @iterate_on.nil?
       @updater = SingleValueUpdate.new(@field, @target, @fallback, @lookup)

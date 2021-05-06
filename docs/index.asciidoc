@@ -44,8 +44,8 @@ Example:
 ----
     filter {
       translate {
-        field => "[http_status]"
-        destination => "[http_status_description]"
+        field => "[http][response][status_code]"
+        target => "[http_status_description]"
         dictionary => {
           "100" => "Continue"
           "101" => "Switching Protocols"
@@ -80,6 +80,12 @@ Any ongoing modification of the dictionary file should be done using a
 copy/edit/rename or create/rename mechanism to avoid the refresh code from
 processing half-baked dictionary content.
 
+==== Compatibility with the Elastic Common Schema (ECS)
+
+The plugin acts as an in place translator if `field` and `target` are the same
+and does not produce any new event fields.
+This is the default behavior in <<plugins-{type}s-{plugin}-ecs_compatibility,ECS compatibility mode>>.
+
 [id="plugins-{type}s-{plugin}-options"]
 ==== Translate Filter Configuration Options
 
@@ -91,6 +97,7 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-destination>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-dictionary>> |<<hash,hash>>|No
 | <<plugins-{type}s-{plugin}-dictionary_path>> |a valid filesystem path|No
+| <<plugins-{type}s-{plugin}-ecs_compatibility>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-exact>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-fallback>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-field>> |<<string,string>>|Yes
@@ -99,6 +106,7 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-refresh_interval>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-regex>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-refresh_behaviour>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-target>> |<<string,string>>|No
 |=======================================================================
 
 Also see <<plugins-{type}s-{plugin}-common-options>> for a list of options supported by all
@@ -110,12 +118,13 @@ filter plugins.
 ===== `destination`
 
   * Value type is <<string,string>>
-  * Default value is `"translation"`
+  * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
+    ** ECS Compatibility disabled: `"translation"`
+    ** ECS Compatibility enabled: defaults to the same value as `field`
+  * This option is deprecated
 
-The destination field you wish to populate with the translated code. The default
-is a field named `translation`. Set this to the same value as source if you want
-to do a substitution, in this case filter will allways succeed. This will clobber
-the old value of the source field!
+NOTE: This option is deprecated and it will be removed in the next major version of Logstash.
+Use <<plugins-{type}s-{plugin}-target>> instead.
 
 [id="plugins-{type}s-{plugin}-dictionary"]
 ===== `dictionary`
@@ -172,6 +181,20 @@ The currently supported formats are YAML, JSON, and CSV. Format selection is
 based on the file extension: `json` for JSON, `yaml` or `yml` for YAML, and
 `csv` for CSV. The CSV format expects exactly two columns, with the first serving
 as the original text (lookup key), and the second column as the translation.
+
+[id="plugins-{type}s-{plugin}-ecs_compatibility"]
+===== `ecs_compatibility`
+
+  * Value type is <<string,string>>
+  * Supported values are:
+    ** `disabled`: disabled ECS-compatibility
+    ** `v1`: compatibility with Elastic Common Schema 1.x
+  * Default value depends on which version of Logstash is running:
+    ** When Logstash provides a `pipeline.ecs_compatibility` setting, its value is used as the default
+    ** Otherwise, the default value is `disabled`.
+
+Controls this plugin's compatibility with the {ecs-ref}[Elastic Common Schema (ECS)].
+The value of this setting affects the _default_ value of <<plugins-{type}s-{plugin}-target>>.
 
 [id="plugins-{type}s-{plugin}-exact"]
 ===== `exact`
@@ -379,7 +402,17 @@ same entry will be updated but entries that existed before but not in the new di
 will remain after the merge; `replace` causes the whole dictionary to be replaced
 with a new one (deleting all entries of the old one on update).
 
+[id="plugins-{type}s-{plugin}-target"]
+===== `target`
 
+  * Value type is <<string,string>>
+  * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
+    ** ECS Compatibility disabled: `"translation"`
+    ** ECS Compatibility enabled: defaults to the same value as `field`
+
+The target field you wish to populate with the translated code.
+Set this to the same value as source `field` causes the plugin to do a substitution,
+in this case filter will always succeed. This will clobber the old value of the source field!
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]

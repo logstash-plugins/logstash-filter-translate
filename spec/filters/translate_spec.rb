@@ -1,5 +1,6 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
+require 'logstash/plugin_mixins/ecs_compatibility_support/spec_helper'
 require "logstash/filters/translate"
 
 module TranslateUtil
@@ -155,42 +156,48 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "fallback value" do
-
-    context "static configuration" do
-      let(:config) do
-        {
-          "field"    => "status",
-          "target"   => "translation",
-          "fallback" => "no match"
-        }
+  describe "fallback value", :ecs_compatibility_support do
+    ecs_compatibility_matrix(:disabled, :v1) do
+      before(:each) do
+        allow_any_instance_of(described_class).to receive(:ecs_compatibility).and_return(ecs_compatibility)
       end
 
-      let(:event) { LogStash::Event.new("status" => "200") }
+      context "static configuration" do
+        let(:config) do
+          {
+              "field"    => "status",
+              "target"   => "translation",
+              "fallback" => "no match"
+          }
+        end
 
-      it "return the exact translation" do
-        subject.register
-        subject.filter(event)
-        expect(event.get("translation")).to eq("no match")
+        let(:event) { LogStash::Event.new("status" => "200") }
+
+        it "return the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq("no match")
+        end
       end
-    end
 
-    context "allow sprintf" do
-      let(:config) do
-        {
-          "field"    => "status",
-          "target"   => "translation",
-          "fallback" => "%{missing_translation}"
-        }
+      context "allow sprintf" do
+        let(:config) do
+          {
+              "field"    => "status",
+              "target"   => "translation",
+              "fallback" => "%{missing_translation}"
+          }
+        end
+
+        let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
+
+        it "return the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq("missing no match")
+        end
       end
 
-      let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
-
-      it "return the exact translation" do
-        subject.register
-        subject.filter(event)
-        expect(event.get("translation")).to eq("missing no match")
-      end
     end
   end
 
@@ -513,6 +520,46 @@ describe LogStash::Filters::Translate do
       end
     end
   end
+
+  describe "default target" do
+
+    let(:config) do
+      {
+          "field" => "message",
+          "dictionary" => { "foo" => "bar" }
+      }
+    end
+
+    let(:event) { LogStash::Event.new("message" => "foo") }
+
+    before { subject.register }
+
+    context "legacy mode" do
+
+      let(:config) { super().merge('ecs_compatibility' => 'disabled') }
+
+      it "uses the translation target" do
+        subject.filter(event)
+        expect(event.get("translation")).to eq("bar")
+        expect(event.get("message")).to eq("foo")
+      end
+
+    end
+
+    context "ECS mode" do
+
+      let(:config) { super().merge('ecs_compatibility' => 'v1') }
+
+      it "does in place translation" do
+        subject.filter(event)
+        expect(event.include?("translation")).to be false
+        expect(event.get("message")).to eq("bar")
+      end
+
+    end
+
+  end
+
 
   describe "error handling" do
 
