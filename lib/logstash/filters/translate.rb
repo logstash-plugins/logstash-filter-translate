@@ -157,6 +157,7 @@ class Translate < LogStash::Filters::Base
   config :iterate_on, :validate => :string
 
   attr_reader :lookup # for testing reloading
+  attr_reader :updater # for tests
 
   def register
     if @dictionary_path && !@dictionary.empty?
@@ -202,9 +203,9 @@ class Translate < LogStash::Filters::Base
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)
     begin
-    rescue Exception => e
       filter_matched(event) if @updater.update(event) || @field == @target
-      @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event)
+    rescue => e
+      @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event.to_hash)
     end
   end # def filter
 end # class LogStash::Filters::Translate

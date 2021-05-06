@@ -513,4 +513,32 @@ describe LogStash::Filters::Translate do
       end
     end
   end
+
+  describe "error handling" do
+
+    let(:config) do
+      {
+          "field" => "message",
+          "dictionary" => { "foo" => "bar" }
+      }
+    end
+
+    let(:event) { LogStash::Event.new("message" => "foo") }
+
+    before { subject.register }
+
+    it "handles unexpected error within filter" do
+      expect(subject.updater).to receive(:update).and_raise RuntimeError.new('TEST')
+
+      expect { subject.filter(event) }.to_not raise_error
+    end
+
+    it "propagates Java errors" do
+      expect(subject.updater).to receive(:update).and_raise java.lang.OutOfMemoryError.new('FAKE-OUT!')
+
+      expect { subject.filter(event) }.to raise_error(java.lang.OutOfMemoryError)
+    end
+
+  end
+
 end
