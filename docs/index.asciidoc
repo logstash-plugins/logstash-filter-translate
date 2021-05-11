@@ -366,7 +366,7 @@ After
   * Value type is <<boolean,boolean>>
   * Default value depends on whether in-place translation is being used
 
-If the destination (or target) field already exists, this configuration item specifies
+If the destination (or target) field already exists, this configuration option controls
 whether the filter skips translation (default behavior) or overwrites the target
 field value with the new translation value.
 
