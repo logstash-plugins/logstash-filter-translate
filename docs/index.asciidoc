@@ -80,6 +80,7 @@ Any ongoing modification of the dictionary file should be done using a
 copy/edit/rename or create/rename mechanism to avoid the refresh code from
 processing half-baked dictionary content.
 
+[id="plugins-{type}s-{plugin}-ecs_metadata"]
 ==== Compatibility with the Elastic Common Schema (ECS)
 
 The plugin acts as an in-place translator if `field` and `target` are the same
