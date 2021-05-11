@@ -415,8 +415,8 @@ with a new one (deleting all entries of the old one on update).
     ** ECS Compatibility enabled: defaults to the same value as `field`
 
 The target field you wish to populate with the translated code.
-Set this to the same value as source `field` causes the plugin to do a substitution,
-in this case filter will always succeed. This will clobber the old value of the source field!
+If you set this value to the same value as source `field`, the plugin does a substitution, and
+the filter will succeed. This will clobber the old value of the source field!
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]
