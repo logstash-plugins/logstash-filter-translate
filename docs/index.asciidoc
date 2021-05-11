@@ -367,7 +367,7 @@ After
   * Default value depends on whether in-place translation is being used
 
 If the destination (or target) field already exists, this configuration item specifies
-whether the filter should skip translation (default behavior) or overwrite the target
+whether the filter skips translation (default behavior) or overwrites the target
 field value with the new translation value.
 
 In case of in-place translation, where `@target` is the same as `@field` (such as when
