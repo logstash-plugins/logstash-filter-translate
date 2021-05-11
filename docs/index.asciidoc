@@ -82,7 +82,7 @@ processing half-baked dictionary content.
 
 ==== Compatibility with the Elastic Common Schema (ECS)
 
-The plugin acts as an in place translator if `field` and `target` are the same
+The plugin acts as an in-place translator if `field` and `target` are the same
 and does not produce any new event fields.
 This is the default behavior in <<plugins-{type}s-{plugin}-ecs_compatibility,ECS compatibility mode>>.
 
