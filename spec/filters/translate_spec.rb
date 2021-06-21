@@ -354,7 +354,8 @@ describe LogStash::Filters::Translate do
         "destination"      => "foo",
         "dictionary_path"  => dictionary_path,
         "override"         => true,
-        "refresh_interval" => -1
+        "refresh_interval" => -1,
+        "ecs_compatibility" => 'disabled'
       }
     end
 
