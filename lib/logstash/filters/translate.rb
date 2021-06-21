@@ -2,6 +2,7 @@
 require "logstash/filters/base"
 require "logstash/namespace"
 require 'logstash/plugin_mixins/ecs_compatibility_support'
+require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -38,6 +39,8 @@ module LogStash module Filters
 class Translate < LogStash::Filters::Base
 
   include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1)
+
+  extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
 
   config_name "translate"
 
@@ -95,13 +98,14 @@ class Translate < LogStash::Filters::Base
   # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
 
-  # The destination field you wish to populate with the translated code. The default
-  # is a field named `translation`. Set this to the same value as source if you want
-  # to do a substitution, in this case filter will always succeed.
-  # This will clobber the old value of the source field!
-  config :target, :validate => :string # :default => "translation" (legacy)
-  # effectively an alias for target
-  config :destination, :validate => :string
+  # The target field you wish to populate with the translation.
+  # When ECS Compatibility is enabled, the default is an in-place translation that
+  # will replace the value of the source field.
+  # When ECS Compatibility is disabled, this option falls through to the deprecated
+  # `destination` field.
+  config :target, :validate => :field_reference
+
+  config :destination, :validate => :string, :deprecated => "Use `target` option instead." # :default => "translation" (legacy)
 
   # When `exact => true`, the translate filter will populate the destination field
   # with the exact contents of the dictionary value. When `exact => false`, the
