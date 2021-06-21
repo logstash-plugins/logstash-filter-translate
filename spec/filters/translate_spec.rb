@@ -290,7 +290,7 @@ describe LogStash::Filters::Translate do
       {
         "iterate_on"       => "foo",
         "field"            => iterate_on_field,
-        "destination"      => "baz",
+        "target"           => "baz",
         "fallback"         => "nooo",
         "dictionary_path"  => dictionary_path,
         # "override"         => true,
@@ -302,7 +302,7 @@ describe LogStash::Filters::Translate do
     describe "when iterate_on is the same as field, AKA array of values" do
       let(:iterate_on_field) { "foo" }
       let(:event) { LogStash::Event.new("foo" => ["nine","eight", "seven"]) }
-      it "adds a translation to destination array for each value in field array" do
+      it "adds a translation to target array for each value in field array" do
         subject.register
         subject.filter(event)
         expect(event.get("baz")).to eq(["val-9-1|val-9-2", "val-8-1|val-8-2", "val-7-1|val-7-2"])
@@ -313,7 +313,7 @@ describe LogStash::Filters::Translate do
       let(:iterate_on_field) { "foo" }
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
       let(:event) { LogStash::Event.new("foo" => [200, 300, 400]) }
-      it "adds a translation to destination array for each value in field array" do
+      it "adds a translation to target array for each value in field array" do
         subject.register
         subject.filter(event)
         expect(event.get("baz")).to eq(["OK","Redirect","Client Error"])
@@ -346,7 +346,7 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "field and destination are the same (needs override)" do
+  describe "field and destination are the same (explicit override)" do
     let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
     let(:config) do
       {
@@ -392,7 +392,21 @@ describe LogStash::Filters::Translate do
     end
 
     it "raises an exception if both 'target' and 'destination' are set" do
-      expect { subject.register }.to raise_error(LogStash::ConfigurationError)
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?destination => /)
+    end
+  end
+
+  context "destination set in ECS mode" do
+    let(:config) do
+      {
+          "field"       => "message",
+          "destination" => 'bar',
+          "ecs_compatibility" => 'v1'
+      }
+    end
+
+    it "no longer supports the 'destination' field" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?destination => /)
     end
   end
 

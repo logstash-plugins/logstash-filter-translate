@@ -182,7 +182,10 @@ class Translate < LogStash::Filters::Base
     if @target && @destination
       raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
     end
-    @target ||= @destination || ecs_select[disabled: 'translation', v1: @field]
+    if ecs_select[disabled: false, v1: @destination] # do not support using `destination => ... in ECS mode
+      raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and set the `target => ...` option instead"
+    end
+    @target ||= ecs_select[disabled: (@destination || 'translation'), v1: @field]
 
     if @field == @target
       @override = true if @override.nil?

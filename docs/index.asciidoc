@@ -119,9 +119,6 @@ filter plugins.
 ===== `destination`
 
   * Value type is <<string,string>>
-  * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
-    ** ECS Compatibility disabled: `"translation"`
-    ** ECS Compatibility enabled: defaults to the same value as `field`
   * This option is deprecated
 
 NOTE: This option is deprecated and it will be removed in the next major version of Logstash.
