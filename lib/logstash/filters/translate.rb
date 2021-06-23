@@ -38,7 +38,7 @@ require_relative "array_of_maps_value_update"
 module LogStash module Filters
 class Translate < LogStash::Filters::Base
 
-  include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1)
+  include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1, :v8 => :v1)
 
   extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
 
