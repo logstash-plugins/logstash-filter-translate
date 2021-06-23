@@ -1,5 +1,7 @@
 ## 3.3.0
-  - Feat: ECS compatible default behavior [#89](https://github.com/logstash-plugins/logstash-filter-translate/pull/89)
+  - Feat: added ECS compatibility mode [#89](https://github.com/logstash-plugins/logstash-filter-translate/pull/89)
+    - deprecated `destination` option in favor of `target` to better align with other plugins
+    - when ECS compatibility is enabled, default behaviour is an in-place translation
   - Fix: improved error handling - do not rescue potentially fatal (JVM) errors
 
 ## 3.2.3
