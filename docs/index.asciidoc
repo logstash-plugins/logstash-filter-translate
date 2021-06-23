@@ -101,11 +101,12 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-ecs_compatibility>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-exact>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-fallback>> |<<string,string>>|No
-| <<plugins-{type}s-{plugin}-field>> |<<string,string>>|Yes
+| <<plugins-{type}s-{plugin}-field>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-iterate_on>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-override>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-refresh_interval>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-regex>> |<<boolean,boolean>>|No
+| <<plugins-{type}s-{plugin}-source>> |<<string,string>>|Yes
 | <<plugins-{type}s-{plugin}-refresh_behaviour>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-target>> |<<string,string>>|No
 |=======================================================================
@@ -119,10 +120,11 @@ filter plugins.
 ===== `destination`
 
   * Value type is <<string,string>>
-  * This option is deprecated
+  * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
+    ** ECS Compatibility disabled: `"translation"`
+    ** ECS Compatibility enabled: field is no longer supported
 
-NOTE: This option is deprecated and it will be removed in the next major version of Logstash.
-Use <<plugins-{type}s-{plugin}-target>> instead.
+deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-target>> instead. In 4.0 this setting will be removed.]
 
 [id="plugins-{type}s-{plugin}-dictionary"]
 ===== `dictionary`
@@ -243,14 +245,10 @@ This configuration can be dynamic and include parts of the event using the `%{fi
 [id="plugins-{type}s-{plugin}-field"]
 ===== `field`
 
-  * This is a required setting.
   * Value type is <<string,string>>
   * There is no default value for this setting.
 
-The name of the logstash event field containing the value to be compared for a
-match by the translate filter (e.g. `message`, `host`, `response_code`).
-
-If this field is an array, only the first value will be used.
+deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-source>> instead. In 4.0 this setting will be removed.]
 
 [id="plugins-{type}s-{plugin}-iterate_on"]
 ===== `iterate_on`
@@ -402,6 +400,18 @@ Setting this to `merge` causes the new dictionary to be merged into the old one.
 same entry will be updated but entries that existed before but not in the new dictionary
 will remain after the merge; `replace` causes the whole dictionary to be replaced
 with a new one (deleting all entries of the old one on update).
+
+[id="plugins-{type}s-{plugin}-source"]
+===== `source`
+
+* This is a required setting.
+* Value type is <<string,string>>
+* There is no default value for this setting.
+
+The name of the logstash event field containing the value to be compared for a
+match by the translate filter (e.g. `message`, `host`, `response_code`).
+
+If this field is an array, only the first value will be used.
 
 [id="plugins-{type}s-{plugin}-target"]
 ===== `target`
