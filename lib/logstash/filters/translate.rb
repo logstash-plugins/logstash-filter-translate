@@ -50,7 +50,10 @@ class Translate < LogStash::Filters::Base
   # If this field is an array, only the first value will be used, unless
   # you specify `iterate_on`. See below. If you want to use another element
   # in the array then use `"[some_field][2]"`
-  config :field, :validate => :string, :required => true
+  config :source, :validate => :field_reference # effectively :required => true
+  # due compatibility w `field => ...` (non ECS mode) we can not mark it as required
+
+  config :field, :validate => :string, :deprecated => "Use `source` option instead."
 
   # If the destination (or target) field already exists, this configuration item specifies
   # whether the filter should skip translation (default) or overwrite the target field
@@ -101,8 +104,7 @@ class Translate < LogStash::Filters::Base
   # The target field you wish to populate with the translation.
   # When ECS Compatibility is enabled, the default is an in-place translation that
   # will replace the value of the source field.
-  # When ECS Compatibility is disabled, this option falls through to the deprecated
-  # `destination` field.
+  # When ECS Compatibility is disabled, this option falls through to the deprecated `destination` field.
   config :target, :validate => :field_reference
 
   config :destination, :validate => :string, :deprecated => "Use `target` option instead." # :default => "translation" (legacy)
@@ -179,15 +181,27 @@ class Translate < LogStash::Filters::Base
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
 
+    if @source && @field
+      raise LogStash::ConfigurationError, "Please remove `field => #{@field.inspect}` and only set the `source => ...` option instead"
+    end
+    if ecs_select[disabled: false, v1: @field] # force using `source => ...` in ECS mode
+      raise LogStash::ConfigurationError, "Please remove `field => #{@destination.inspect}` and set the `source => ...` option instead"
+    else
+      @source ||= @field
+      unless @source
+        raise LogStash::ConfigurationError, "No source field specified, please provide the `source => ...` option"
+      end
+    end
+
     if @target && @destination
       raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
     end
-    if ecs_select[disabled: false, v1: @destination] # do not support using `destination => ... in ECS mode
+    if ecs_select[disabled: false, v1: @destination] # do not support using `destination => ...` in ECS mode
       raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and set the `target => ...` option instead"
     end
-    @target ||= ecs_select[disabled: (@destination || 'translation'), v1: @field]
+    @target ||= ecs_select[disabled: (@destination || 'translation'), v1: @source]
 
-    if @field == @target
+    if @source == @target
       @override = true if @override.nil?
       if @override.eql?(false)
         raise LogStash::ConfigurationError, "Configuring `override => false` with in-place translation has no effect, please remove the option"
@@ -195,11 +209,11 @@ class Translate < LogStash::Filters::Base
     end
 
     if @iterate_on.nil?
-      @updater = SingleValueUpdate.new(@field, @target, @fallback, @lookup)
-    elsif @iterate_on == @field
+      @updater = SingleValueUpdate.new(@source, @target, @fallback, @lookup)
+    elsif @iterate_on == @source
       @updater = ArrayOfValuesUpdate.new(@iterate_on, @target, @fallback, @lookup)
     else
-      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @target, @fallback, @lookup)
+      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @source, @target, @fallback, @lookup)
     end
 
     @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
@@ -217,9 +231,9 @@ class Translate < LogStash::Filters::Base
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)
     begin
-      filter_matched(event) if @updater.update(event) || @field == @target
+      filter_matched(event) if @updater.update(event) || @source == @target
     rescue => e
-      @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :field => @field, :event => event.to_hash)
+      @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :source => @source, :event => event.to_hash)
     end
   end # def filter
 end # class LogStash::Filters::Translate
