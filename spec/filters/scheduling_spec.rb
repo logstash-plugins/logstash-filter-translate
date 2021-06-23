@@ -15,8 +15,8 @@ describe LogStash::Filters::Translate do
 
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
@@ -106,8 +106,8 @@ describe LogStash::Filters::Translate do
     let(:dictionary_size) { 100000 }
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
@@ -155,8 +155,8 @@ describe LogStash::Filters::Translate do
     let(:dictionary_size) { 100000 }
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
