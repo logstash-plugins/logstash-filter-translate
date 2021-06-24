@@ -83,7 +83,7 @@ processing half-baked dictionary content.
 [id="plugins-{type}s-{plugin}-ecs_metadata"]
 ==== Compatibility with the Elastic Common Schema (ECS)
 
-The plugin acts as an in-place translator if `field` and `target` are the same
+The plugin acts as an in-place translator if `source` and `target` are the same
 and does not produce any new event fields.
 This is the default behavior in <<plugins-{type}s-{plugin}-ecs_compatibility,ECS compatibility mode>>.
 
@@ -120,9 +120,7 @@ filter plugins.
 ===== `destination`
 
   * Value type is <<string,string>>
-  * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
-    ** ECS Compatibility disabled: `"translation"`
-    ** ECS Compatibility enabled: field is no longer supported
+  * Deprecated alias for <<plugins-{type}s-{plugin}-target>> setting.
 
 deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-target>> instead. In 4.0 this setting will be removed.]
 
@@ -188,7 +186,7 @@ as the original text (lookup key), and the second column as the translation.
   * Value type is <<string,string>>
   * Supported values are:
     ** `disabled`: disabled ECS-compatibility
-    ** `v1`: compatibility with Elastic Common Schema 1.x
+    ** `v1`, `v8`: compatibility with the specified major version of the Elastic Common Schema
   * Default value depends on which version of Logstash is running:
     ** When Logstash provides a `pipeline.ecs_compatibility` setting, its value is used as the default
     ** Otherwise, the default value is `disabled`.
@@ -246,7 +244,7 @@ This configuration can be dynamic and include parts of the event using the `%{fi
 ===== `field`
 
   * Value type is <<string,string>>
-  * There is no default value for this setting.
+  * Deprecated alias for <<plugins-{type}s-{plugin}-source>> setting.
 
 deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-source>> instead. In 4.0 this setting will be removed.]
 

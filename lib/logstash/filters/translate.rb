@@ -3,6 +3,7 @@ require "logstash/filters/base"
 require "logstash/namespace"
 require 'logstash/plugin_mixins/ecs_compatibility_support'
 require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
+require 'logstash/plugin_mixins/deprecation_logger_support'
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -39,6 +40,7 @@ module LogStash module Filters
 class Translate < LogStash::Filters::Base
 
   include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1, :v8 => :v1)
+  include LogStash::PluginMixins::DeprecationLoggerSupport
 
   extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
 
@@ -181,25 +183,29 @@ class Translate < LogStash::Filters::Base
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
 
-    if @source && @field
-      raise LogStash::ConfigurationError, "Please remove `field => #{@field.inspect}` and only set the `source => ...` option instead"
-    end
-    if ecs_select[disabled: false, v1: @field] # force using `source => ...` in ECS mode
-      raise LogStash::ConfigurationError, "Please remove `field => #{@destination.inspect}` and set the `source => ...` option instead"
-    else
-      @source ||= @field
-      unless @source
-        raise LogStash::ConfigurationError, "No source field specified, please provide the `source => ...` option"
+    if @field
+      if @source
+        raise LogStash::ConfigurationError, "Please remove `field => #{@field.inspect}` and only set the `source => ...` option instead"
+      else
+        deprecation_logger.deprecated("`field` option is deprecated; use `source` instead.")
+        logger.debug("intercepting `field` to populate `source`: `#{@field}`")
+        @source = @field
       end
     end
+    unless @source
+      raise LogStash::ConfigurationError, "No source field specified, please provide the `source => ...` option"
+    end
 
-    if @target && @destination
-      raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
+    if @destination
+      if @target
+        raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and only set the `target => ...` option instead"
+      else
+        deprecation_logger.deprecated("`destination` option is deprecated; use `target` instead.")
+        logger.debug("intercepting `destination` to populate `target`: `#{@destination}`")
+        @target = @destination
+      end
     end
-    if ecs_select[disabled: false, v1: @destination] # do not support using `destination => ...` in ECS mode
-      raise LogStash::ConfigurationError, "Please remove `destination => #{@destination.inspect}` and set the `target => ...` option instead"
-    end
-    @target ||= ecs_select[disabled: (@destination || 'translation'), v1: @source]
+    @target ||= ecs_select[disabled: 'translation', v1: @source]
 
     if @source == @target
       @override = true if @override.nil?

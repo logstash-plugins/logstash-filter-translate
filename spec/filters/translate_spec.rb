@@ -14,6 +14,14 @@ describe LogStash::Filters::Translate do
   let(:config) { Hash.new }
   subject { described_class.new(config) }
 
+  let(:logger) { double('Logger').as_null_object }
+  let(:deprecation_logger) { double('DeprecationLogger').as_null_object }
+
+  before(:each) do
+    allow_any_instance_of(described_class).to receive(:logger).and_return(logger)
+    allow_any_instance_of(described_class).to receive(:deprecation_logger).and_return(deprecation_logger)
+  end
+
   describe "exact translation" do
 
     let(:config) do
@@ -383,7 +391,7 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  context "invalid target+dictionary configuration" do
+  context "invalid target+destination configuration" do
     let(:config) do
       {
           "source"      => "message",
@@ -397,40 +405,48 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  context "destination in ECS mode" do
+  context "invalid source+field configuration" do
+    let(:config) do
+      {
+        "source"      => "message",
+        "field"       => 'foo'
+      }
+    end
+
+    it "raises an exception if both 'source' and 'field' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?field => /)
+    end
+  end
+
+  context "destination option" do
     let(:config) do
       {
           "source" => "message", "destination" => 'bar', "ecs_compatibility" => 'v1'
       }
     end
 
-    it "no longer supports the 'destination' field" do
-      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?destination => /)
+    it "sets the target" do
+      subject.register
+      expect( subject.target ).to eql 'bar'
+
+      expect(logger).to have_received(:debug).with(a_string_including "intercepting `destination`")
+      expect(deprecation_logger).to have_received(:deprecated).with(a_string_including "`destination` option is deprecated; use `target` instead.")
     end
   end
 
-  context "field option in ECS mode" do
+  context "field option" do
     let(:config) do
       {
-          "field" => "message", "target" => 'bar', "ecs_compatibility" => 'v1'
+          "field" => "message", "target" => 'bar'
       }
     end
 
-    it "no longer supports the 'field' option" do
-      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?field => /)
-    end
-  end
-
-  context "field option in legacy mode" do
-    let(:config) do
-      {
-          "field" => "message", "target" => 'bar', "ecs_compatibility" => 'disabled'
-      }
-    end
-
-    it "still works" do
+    it "sets the source" do
       subject.register # does not raise
       expect( subject.source ).to eql 'message'
+
+      expect(logger).to have_received(:debug).with(a_string_including "intercepting `field`")
+      expect(deprecation_logger).to have_received(:deprecated).with(a_string_including "`field` option is deprecated; use `source` instead.")
     end
   end
 
