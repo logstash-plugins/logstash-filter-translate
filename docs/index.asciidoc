@@ -159,11 +159,10 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 The full path of the external dictionary file. The format of the table should be
 a standard YAML, JSON, or CSV. 
 
-Specify any integer-based keys in quotes. The
-value taken from the event's `field` setting is converted to a string. The
-lookup dictionary keys must also be strings, and the quotes make the
-integer-based keys function as a string. For example, the YAML file should look
-something like this:
+Specify any integer-based keys in quotes. The value taken from the event's
+`source` setting is converted to a string. The lookup dictionary keys must also
+be strings, and the quotes make the integer-based keys function as a string.
+For example, the YAML file should look something like this:
 
 [source,ruby]
 ----
@@ -258,14 +257,14 @@ When the value that you need to perform enrichment on is a variable sized array
 then specify the field name in this setting. This setting introduces two modes,
 1) when the value is an array of strings and 2) when the value is an array of
 objects (as in JSON object). +
-In the first mode, you should have the same field name in both `field` and
+In the first mode, you should have the same field name in both `source` and
 `iterate_on`, the result will be an array added to the field specified in the
-`destination` setting. This array will have the looked up value (or the
+`target` setting. This array will have the looked up value (or the
 `fallback` value or nil) in same ordinal position as each sought value. +
 In the second mode, specify the field that has the array of objects in
 `iterate_on` then specify the field in each object that provides the sought value
-with `field` and the field to write the looked up value (or the `fallback` value)
-to with `destination`.
+with `source` and the field to write the looked up value (or the `fallback` value)
+to with `target`.
 
 For a dictionary of:
 [source,csv]
@@ -281,8 +280,8 @@ Example of Mode 1
     filter {
       translate {
         iterate_on => "[collaborator_ids]"
-        field      => "[collaborator_ids]"
-        destination => "[collaborator_names]"
+        source     => "[collaborator_ids]"
+        target     => "[collaborator_names]"
         fallback => "Unknown"
       }
     }
@@ -305,9 +304,9 @@ Example of Mode 2
     filter {
       translate {
         iterate_on => "[collaborators]"
-        field      => "[id]"
-        destination => "[name]"
-        fallback => "Unknown"
+        source     => "[id]"
+        target     => "[name]"
+        fallback   => "Unknown"
       }
     }
 
@@ -363,7 +362,7 @@ If the destination (or target) field already exists, this configuration option c
 whether the filter skips translation (default behavior) or overwrites the target
 field value with the new translation value.
 
-In case of in-place translation, where `@target` is the same as `@field` (such as when
+In case of in-place translation, where `target` is the same as `source` (such as when
 <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled), overwriting is allowed.
 
 [id="plugins-{type}s-{plugin}-refresh_interval"]
@@ -417,10 +416,10 @@ If this field is an array, only the first value will be used.
   * Value type is <<string,string>>
   * Default value depends on whether <<plugins-{type}s-{plugin}-ecs_compatibility>> is enabled:
     ** ECS Compatibility disabled: `"translation"`
-    ** ECS Compatibility enabled: defaults to the same value as `field`
+    ** ECS Compatibility enabled: defaults to the same value as `source`
 
 The target field you wish to populate with the translated code.
-If you set this value to the same value as source `field`, the plugin does a substitution, and
+If you set this value to the same value as `source` field, the plugin does a substitution, and
 the filter will succeed. This will clobber the old value of the source field!
 
 [id="plugins-{type}s-{plugin}-common-options"]
