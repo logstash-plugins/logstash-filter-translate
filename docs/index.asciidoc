@@ -33,18 +33,17 @@ the mapping.
 
 These two methods may not be used in conjunction; it will produce an error.
 
-Operationally, for each event, the value from the `field` setting is tested
+Operationally, for each event, the value from the `source` setting is tested
 against the dictionary and if it matches exactly (or matches a regex when
-`regex` configuration item has been enabled), the matched value is put in
-the `destination` field, but on no match the `fallback` setting string is
-used instead.
+`regex` configuration item has been enabled), the matched value is put in the
+`target` field, but on no match the `fallback` setting string is used instead.
 
 Example:
 [source,ruby]
 ----
     filter {
       translate {
-        field => "[http][response][status_code]"
+        source => "[http][response][status_code]"
         target => "[http_status_description]"
         dictionary => {
           "100" => "Continue"
@@ -131,7 +130,7 @@ deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-target>> instead. In 4.0 this s
   * Default value is `{}`
 
 The dictionary to use for translation, when specified in the logstash filter
-configuration item (i.e. do not use the `@dictionary_path` file).
+configuration item (i.e. do not use the `dictionary_path` file).
 
 Example:
 [source,ruby]
