@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-filter-translate'
-  s.version         = '3.2.3'
+  s.version         = '3.3.0'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "Replaces field contents based on a hash or YAML file"
   s.description     = "This gem is a Logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/logstash-plugin install gemname. This gem is not a stand-alone program"
@@ -21,6 +21,9 @@ Gem::Specification.new do |s|
 
   # Gem dependencies
   s.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
+  s.add_runtime_dependency 'logstash-mixin-ecs_compatibility_support', '~> 1.2'
+  s.add_runtime_dependency 'logstash-mixin-validator_support', '~> 1.0'
+  s.add_runtime_dependency 'logstash-mixin-deprecation_logger_support', '~> 1.0'
   s.add_runtime_dependency 'rufus-scheduler'
 
   s.add_development_dependency 'logstash-devutils'

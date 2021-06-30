@@ -1,4 +1,5 @@
 # encoding: utf-8
+require 'rspec/wait'
 require "logstash/devutils/rspec/spec_helper"
 require "support/rspec_wait_handler_helper"
 require "support/build_huge_dictionaries"
@@ -14,8 +15,8 @@ describe LogStash::Filters::Translate do
 
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
@@ -105,8 +106,8 @@ describe LogStash::Filters::Translate do
     let(:dictionary_size) { 100000 }
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,
@@ -154,8 +155,8 @@ describe LogStash::Filters::Translate do
     let(:dictionary_size) { 100000 }
     let(:config) do
       {
-        "field"       => "[status]",
-        "destination" => "[translation]",
+        "source"      => "[status]",
+        "target"      => "[translation]",
         "dictionary_path"  => dictionary_path.to_path,
         "exact"       => true,
         "regex"       => false,

@@ -1,5 +1,6 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
+require 'logstash/plugin_mixins/ecs_compatibility_support/spec_helper'
 require "logstash/filters/translate"
 
 module TranslateUtil
@@ -13,12 +14,20 @@ describe LogStash::Filters::Translate do
   let(:config) { Hash.new }
   subject { described_class.new(config) }
 
+  let(:logger) { double('Logger').as_null_object }
+  let(:deprecation_logger) { double('DeprecationLogger').as_null_object }
+
+  before(:each) do
+    allow_any_instance_of(described_class).to receive(:logger).and_return(logger)
+    allow_any_instance_of(described_class).to receive(:deprecation_logger).and_return(deprecation_logger)
+  end
+
   describe "exact translation" do
 
     let(:config) do
       {
-        "field"       => "status",
-        "destination" => "translation",
+        "source"      => "status",
+        "target"      => "translation",
         "dictionary"  => [ "200", "OK",
                            "300", "Redirect",
                            "400", "Client Error",
@@ -41,8 +50,8 @@ describe LogStash::Filters::Translate do
 
     let(:config) do
       {
-        "field"       => "status",
-        "destination" => "translation",
+        "source"      => "status",
+        "target"      => "translation",
         "dictionary"  => [ "^2\\d\\d", "OK",
                            "^3\\d\\d", "Redirect",
                            "^4\\d\\d", "Client Error",
@@ -65,8 +74,8 @@ describe LogStash::Filters::Translate do
     context "when using an inline dictionary" do
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "source"      => "status",
+          "target"      => "translation",
           "dictionary"  => [ "200", "OK",
                              "300", "Redirect",
                              "400", "Client Error",
@@ -89,8 +98,8 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "source"      => "status",
+          "target"      => "translation",
           "dictionary_path" => dictionary_path,
           "refresh_interval" => 0,
           "exact"       => false,
@@ -112,8 +121,8 @@ describe LogStash::Filters::Translate do
     context "when using an inline dictionary" do
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "source"      => "status",
+          "target"      => "translation",
           "dictionary"  => [ "^2[0-9][0-9]$", "OK",
                              "^3[0-9][0-9]$", "Redirect",
                              "^4[0-9][0-9]$", "Client Error",
@@ -136,8 +145,8 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_dict.csv") }
       let(:config) do
         {
-          "field"       => "status",
-          "destination" => "translation",
+          "source"      => "status",
+          "target"      => "translation",
           "dictionary_path" => dictionary_path,
           "refresh_interval" => 0,
           "exact"       => true,
@@ -155,42 +164,48 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "fallback value" do
-
-    context "static configuration" do
-      let(:config) do
-        {
-          "field"       => "status",
-          "destination" => "translation",
-          "fallback" => "no match"
-        }
+  describe "fallback value", :ecs_compatibility_support do
+    ecs_compatibility_matrix(:disabled, :v1) do
+      before(:each) do
+        allow_any_instance_of(described_class).to receive(:ecs_compatibility).and_return(ecs_compatibility)
       end
 
-      let(:event) { LogStash::Event.new("status" => "200") }
+      context "static configuration" do
+        let(:config) do
+          {
+              "source"   => "status",
+              "target"   => "translation",
+              "fallback" => "no match"
+          }
+        end
 
-      it "return the exact translation" do
-        subject.register
-        subject.filter(event)
-        expect(event.get("translation")).to eq("no match")
+        let(:event) { LogStash::Event.new("status" => "200") }
+
+        it "return the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq("no match")
+        end
       end
-    end
 
-    context "allow sprintf" do
-      let(:config) do
-        {
-          "field"       => "status",
-          "destination" => "translation",
-          "fallback" => "%{missing_translation}"
-        }
+      context "allow sprintf" do
+        let(:config) do
+          {
+              "source"   => "status",
+              "target"   => "translation",
+              "fallback" => "%{missing_translation}"
+          }
+        end
+
+        let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
+
+        it "return the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq("missing no match")
+        end
       end
 
-      let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
-
-      it "return the exact translation" do
-        subject.register
-        subject.filter(event)
-        expect(event.get("translation")).to eq("missing no match")
-      end
     end
   end
 
@@ -200,8 +215,8 @@ describe LogStash::Filters::Translate do
 
     let(:config) do
       {
-        "field"       => "status",
-        "destination" => "translation",
+        "source"      => "status",
+        "target"      => "translation",
         "dictionary_path"  => dictionary_path,
         "refresh_interval" => -1,
         "exact"       => true,
@@ -282,8 +297,8 @@ describe LogStash::Filters::Translate do
     let(:config) do
       {
         "iterate_on"       => "foo",
-        "field"            => iterate_on_field,
-        "destination"      => "baz",
+        "source"           => iterate_on_field,
+        "target"           => "baz",
         "fallback"         => "nooo",
         "dictionary_path"  => dictionary_path,
         # "override"         => true,
@@ -295,7 +310,7 @@ describe LogStash::Filters::Translate do
     describe "when iterate_on is the same as field, AKA array of values" do
       let(:iterate_on_field) { "foo" }
       let(:event) { LogStash::Event.new("foo" => ["nine","eight", "seven"]) }
-      it "adds a translation to destination array for each value in field array" do
+      it "adds a translation to target array for each value in field array" do
         subject.register
         subject.filter(event)
         expect(event.get("baz")).to eq(["val-9-1|val-9-2", "val-8-1|val-8-2", "val-7-1|val-7-2"])
@@ -306,7 +321,7 @@ describe LogStash::Filters::Translate do
       let(:iterate_on_field) { "foo" }
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("regex_union_dict.csv") }
       let(:event) { LogStash::Event.new("foo" => [200, 300, 400]) }
-      it "adds a translation to destination array for each value in field array" do
+      it "adds a translation to target array for each value in field array" do
         subject.register
         subject.filter(event)
         expect(event.get("baz")).to eq(["OK","Redirect","Client Error"])
@@ -339,7 +354,7 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "field and destination are the same (needs override)" do
+  describe "field and destination are the same (explicit override)" do
     let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
     let(:config) do
       {
@@ -347,7 +362,8 @@ describe LogStash::Filters::Translate do
         "destination"      => "foo",
         "dictionary_path"  => dictionary_path,
         "override"         => true,
-        "refresh_interval" => -1
+        "refresh_interval" => -1,
+        "ecs_compatibility" => 'disabled'
       }
     end
 
@@ -360,11 +376,11 @@ describe LogStash::Filters::Translate do
     end
   end
 
-  describe "general configuration" do
+  context "invalid dictionary configuration" do
     let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
     let(:config) do
       {
-        "field"            => "random field",
+        "source"           => "random field",
         "dictionary"       => { "a" => "b" },
         "dictionary_path"  => dictionary_path,
       }
@@ -375,6 +391,77 @@ describe LogStash::Filters::Translate do
     end
   end
 
+  context "invalid target+destination configuration" do
+    let(:config) do
+      {
+          "source"      => "message",
+          "target"      => 'foo',
+          "destination" => 'bar',
+      }
+    end
+
+    it "raises an exception if both 'target' and 'destination' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?destination => /)
+    end
+  end
+
+  context "invalid source+field configuration" do
+    let(:config) do
+      {
+        "source"      => "message",
+        "field"       => 'foo'
+      }
+    end
+
+    it "raises an exception if both 'source' and 'field' are set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /remove .*?field => /)
+    end
+  end
+
+  context "destination option" do
+    let(:config) do
+      {
+          "source" => "message", "destination" => 'bar', "ecs_compatibility" => 'v1'
+      }
+    end
+
+    it "sets the target" do
+      subject.register
+      expect( subject.target ).to eql 'bar'
+
+      expect(logger).to have_received(:debug).with(a_string_including "intercepting `destination`")
+      expect(deprecation_logger).to have_received(:deprecated).with(a_string_including "`destination` option is deprecated; use `target` instead.")
+    end
+  end
+
+  context "field option" do
+    let(:config) do
+      {
+          "field" => "message", "target" => 'bar'
+      }
+    end
+
+    it "sets the source" do
+      subject.register # does not raise
+      expect( subject.source ).to eql 'message'
+
+      expect(logger).to have_received(:debug).with(a_string_including "intercepting `field`")
+      expect(deprecation_logger).to have_received(:deprecated).with(a_string_including "`field` option is deprecated; use `source` instead.")
+    end
+  end
+
+  context "source option" do
+    let(:config) do
+      {
+          "target" => 'bar'
+      }
+    end
+
+    it "is required to be set" do
+      expect { subject.register }.to raise_error(LogStash::ConfigurationError, /provide .*?source => /)
+    end
+  end
+
   describe "refresh_behaviour" do
     let(:dictionary_content) { "a : 1\nb : 2\nc : 3" }
     let(:modified_content) { "a : 1\nb : 4" }
@@ -382,8 +469,8 @@ describe LogStash::Filters::Translate do
     let(:refresh_behaviour) { "merge" }
     let(:config) do
       {
-        "field" => "status",
-        "destination" => "translation",
+        "source" => "status",
+        "target" => "translation",
         "dictionary_path" => dictionary_path,
         "refresh_interval" => -1, # we're controlling this manually
         "exact" => true,
@@ -449,8 +536,8 @@ describe LogStash::Filters::Translate do
 
     let(:config) do
       {
-        "field"       => "status",
-        "destination" => "translation",
+        "source"      => "status",
+        "target"      => "translation",
         "dictionary_path"  => dictionary_path.to_path,
         "refresh_interval" => -1,
         "fallback" => "no match",
@@ -499,4 +586,72 @@ describe LogStash::Filters::Translate do
       end
     end
   end
+
+  describe "default target" do
+
+    let(:config) do
+      {
+          "source" => "message",
+          "dictionary" => { "foo" => "bar" }
+      }
+    end
+
+    let(:event) { LogStash::Event.new("message" => "foo") }
+
+    before { subject.register }
+
+    context "legacy mode" do
+
+      let(:config) { super().merge('ecs_compatibility' => 'disabled') }
+
+      it "uses the translation target" do
+        subject.filter(event)
+        expect(event.get("translation")).to eq("bar")
+        expect(event.get("message")).to eq("foo")
+      end
+
+    end
+
+    context "ECS mode" do
+
+      let(:config) { super().merge('ecs_compatibility' => 'v1') }
+
+      it "does in place translation" do
+        subject.filter(event)
+        expect(event.include?("translation")).to be false
+        expect(event.get("message")).to eq("bar")
+      end
+
+    end
+
+  end
+
+
+  describe "error handling" do
+
+    let(:config) do
+      {
+          "source" => "message",
+          "dictionary" => { "foo" => "bar" }
+      }
+    end
+
+    let(:event) { LogStash::Event.new("message" => "foo") }
+
+    before { subject.register }
+
+    it "handles unexpected error within filter" do
+      expect(subject.updater).to receive(:update).and_raise RuntimeError.new('TEST')
+
+      expect { subject.filter(event) }.to_not raise_error
+    end
+
+    it "propagates Java errors" do
+      expect(subject.updater).to receive(:update).and_raise java.lang.OutOfMemoryError.new('FAKE-OUT!')
+
+      expect { subject.filter(event) }.to raise_error(java.lang.OutOfMemoryError)
+    end
+
+  end
+
 end

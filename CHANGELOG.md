@@ -1,3 +1,10 @@
+## 3.3.0
+  - Feat: added ECS compatibility mode [#89](https://github.com/logstash-plugins/logstash-filter-translate/pull/89)
+    - deprecated `destination` option in favor of `target` to better align with other plugins
+    - deprecated `field` option in favor of `source` to better align with other plugins
+    - when ECS compatibility is enabled, default behaviour is an in-place translation
+  - Fix: improved error handling - do not rescue potentially fatal (JVM) errors
+
 ## 3.2.3
   - Fix to align with docs - looked-up values are always strings. Coerce better. [#77](https://github.com/logstash-plugins/logstash-filter-translate/pull/77)
   - Fix bug in dictionary/file the always applied RegexExact, manifested when dictionary keys are not regex compatible [Logstash #9936](https://github.com/elastic/logstash/issues/9936)
