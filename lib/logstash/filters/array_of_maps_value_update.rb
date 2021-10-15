@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 module LogStash module Filters
-  class ArrayOfMapsValueUpdate
+  class DynamicArrayOfMapsValueUpdate
     def initialize(iterate_on, field, destination, fallback, lookup, dynamic)
       @iterate_on = ensure_reference_format(iterate_on)
       @field = ensure_reference_format(field)

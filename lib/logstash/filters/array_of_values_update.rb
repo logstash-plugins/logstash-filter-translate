@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 module LogStash module Filters
-  class ArrayOfValuesUpdate
+  class DynamicArrayOfValuesUpdate
     class CoerceArray
       def call(source) source; end
     end

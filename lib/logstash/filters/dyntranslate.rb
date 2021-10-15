@@ -171,11 +171,11 @@ class DynTranslate < LogStash::Filters::Base
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
     if @iterate_on.nil?
-      @updater = SingleValueUpdate.new(@field, @destination, @fallback, @lookup, @dynamic)
+      @updater = DynamicSingleValueUpdate.new(@field, @destination, @fallback, @lookup, @dynamic)
     elsif @iterate_on == @field
-      @updater = ArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup, @dynamic)
+      @updater = DynamicArrayOfValuesUpdate.new(@iterate_on, @destination, @fallback, @lookup, @dynamic)
     else
-      @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup, @dynamic)
+      @updater = DynamicArrayOfMapsValueUpdate.new(@iterate_on, @field, @destination, @fallback, @lookup, @dynamic)
     end
 
     @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
