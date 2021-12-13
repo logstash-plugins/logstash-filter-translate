@@ -419,7 +419,8 @@ If this field is an array, only the first value will be used.
 
 The target field you wish to populate with the translated code.
 If you set this value to the same value as `source` field, the plugin does a substitution, and
-the filter will succeed. This will clobber the old value of the source field!
+the filter will succeed. This will clobber the old value of the source field! You must also set
+<<plugins-{type}s-{plugin}-override>> to `true` in this case.
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]
