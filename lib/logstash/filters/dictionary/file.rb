@@ -37,7 +37,6 @@ module LogStash module Filters module Dictionary
       @dictionary_path = path
       @refresh_interval = refresh_interval
       @short_refresh = @refresh_interval <= 300
-      @stopping = Concurrent::AtomicBoolean.new # ported from jdbc_static, need a way to prevent a scheduled execution from running a load.
       rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
       @write_lock = rw_lock.writeLock
       @dictionary = Hash.new
@@ -51,13 +50,6 @@ module LogStash module Filters module Dictionary
               end
       @fetch_strategy = klass.new(*args)
       load_dictionary(raise_exception = true)
-      stop_scheduler(initial = true)
-      start_scheduler unless @refresh_interval <= 0 # disabled, a scheduler interval of zero makes no sense
-    end
-
-    def stop_scheduler(initial = false)
-      @stopping.make_true unless initial
-      @scheduler.shutdown(:wait) if @scheduler
     end
 
     def load_dictionary(raise_exception=false)
@@ -88,13 +80,6 @@ module LogStash module Filters module Dictionary
 
     private
 
-    def start_scheduler
-      @scheduler = Rufus::Scheduler.new
-      @scheduler.interval("#{@refresh_interval}s", :overlap => false) do
-        reload_dictionary
-      end
-    end
-
     def merge_dictionary
       @write_lock.lock
       begin
@@ -116,14 +101,15 @@ module LogStash module Filters module Dictionary
       end
     end
 
+    # scheduler executes this method, periodically
     def reload_dictionary
-      return if @stopping.true?
       if @short_refresh
         load_dictionary if needs_refresh?
       else
         load_dictionary
       end
     end
+    public :reload_dictionary
 
     def needs_refresh?
       @dictionary_mtime != ::File.mtime(@dictionary_path).to_f

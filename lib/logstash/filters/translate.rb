@@ -231,11 +231,11 @@ class Translate < LogStash::Filters::Base
     else
       @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
     end
-  end # def register
 
-  def close
-    @lookup.stop_scheduler
-  end
+    if @lookup.respond_to?(:reload_dictionary) && @refresh_interval > 0 # a scheduler interval of zero makes no sense
+      scheduler.interval("#{@refresh_interval}s", overlap: false) { @lookup.reload_dictionary }
+    end
+  end # def register
 
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)
