@@ -4,12 +4,13 @@ require 'rufus-scheduler'
 require "logstash/util/loggable"
 require "logstash/filters/fetch_strategy/file"
 
-java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
-
 module LogStash module Filters module Dictionary
   class DictionaryFileError < StandardError; end
 
   class File
+
+    include LogStash::Util::Loggable
+
     def self.create(path, refresh_interval, refresh_behaviour, exact, regex)
       if /\.y[a]?ml$/.match(path)
         instance = YamlFile.new(path, refresh_interval, exact, regex)
@@ -30,7 +31,6 @@ module LogStash module Filters module Dictionary
       end
     end
 
-    include LogStash::Util::Loggable
     attr_reader :dictionary, :fetch_strategy
 
     def initialize(path, refresh_interval, exact, regex)
