@@ -4,6 +4,7 @@ require "logstash/namespace"
 require 'logstash/plugin_mixins/ecs_compatibility_support'
 require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
 require 'logstash/plugin_mixins/deprecation_logger_support'
+require 'logstash/plugin_mixins/scheduler'
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -43,6 +44,8 @@ class Translate < LogStash::Filters::Base
   include LogStash::PluginMixins::DeprecationLoggerSupport
 
   extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
+
+  include LogStash::PluginMixins::Scheduler
 
   config_name "translate"
 
