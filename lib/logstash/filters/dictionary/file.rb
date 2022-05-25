@@ -1,6 +1,4 @@
 # encoding: utf-8
-require 'concurrent/atomic/atomic_boolean'
-require 'rufus-scheduler'
 require "logstash/util/loggable"
 require "logstash/filters/fetch_strategy/file"
 
