@@ -6,19 +6,9 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def initialize_for_file_type
-      @io = StringIO.new("")
-      @csv = ::CSV.new(@io)
-    end
-
     def read_file_into_dictionary
-      # low level CSV read that tries to create as
-      # few intermediate objects as possible
-      # this overwrites the value at key
-      IO.foreach(@dictionary_path, :mode => 'r:bom|utf-8') do |line|
-        @io.string = line
-        k,v = @csv.shift
-        @dictionary[k] = v
+      ::CSV.open(@dictionary_path, 'r:bom|utf-8') do |csv|
+        csv.each { |row| k,v = row; @dictionary[k] = v }
       end
     end
   end
