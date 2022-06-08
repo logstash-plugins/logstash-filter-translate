@@ -58,7 +58,9 @@ describe LogStash::Filters::Translate do
           end
           .then_after(1.2, "wait then translate again") do
             subject.filter(event)
-            wait(0.1).for{event.get("[translation]")}.to eq("12"), "field [translation] did not eq '12'"
+            try(5) do
+              wait(0.1).for{event.get("[translation]")}.to eq("12"), "field [translation] did not eq '12'"
+            end
           end
           .then("stop") do
             subject.close
@@ -87,7 +89,9 @@ describe LogStash::Filters::Translate do
           end
           .then_after(1.2, "wait then translate again") do
             subject.filter(event)
-            wait(0.1).for{event.get("[translation]")}.to eq("22"), "field [translation] did not eq '22'"
+            try(5) do
+              wait(0.1).for{event.get("[translation]")}.to eq("22"), "field [translation] did not eq '22'"
+            end
           end
           .then("stop") do
             subject.close
