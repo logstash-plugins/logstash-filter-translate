@@ -8,7 +8,7 @@ module LogStash module Filters module Dictionary
 
     def read_file_into_dictionary
       ::CSV.open(@dictionary_path, 'r:bom|utf-8') do |csv|
-        csv.each { |row| k,v = row; @dictionary[k] = v }
+        csv.each { |k,v| @dictionary[k] = v }
       end
     end
   end
