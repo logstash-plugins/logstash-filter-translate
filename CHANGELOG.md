@@ -1,3 +1,8 @@
+## 3.3.1
+  - Refactor: reading .csv for JRuby 9.3 compatibility [#94](https://github.com/logstash-plugins/logstash-filter-translate/pull/94)
+
+    NOTE: these changes are essential for the plugin to work properly under Logstash 8.3 and later.
+
 ## 3.3.0
   - Feat: added ECS compatibility mode [#89](https://github.com/logstash-plugins/logstash-filter-translate/pull/89)
     - deprecated `destination` option in favor of `target` to better align with other plugins
