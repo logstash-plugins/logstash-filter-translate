@@ -4,6 +4,7 @@ require "logstash/namespace"
 require 'logstash/plugin_mixins/ecs_compatibility_support'
 require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
 require 'logstash/plugin_mixins/deprecation_logger_support'
+require 'logstash/plugin_mixins/scheduler'
 
 require "logstash/filters/dictionary/memory"
 require "logstash/filters/dictionary/file"
@@ -43,6 +44,8 @@ class Translate < LogStash::Filters::Base
   include LogStash::PluginMixins::DeprecationLoggerSupport
 
   extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
+
+  include LogStash::PluginMixins::Scheduler
 
   config_name "translate"
 
@@ -228,11 +231,11 @@ class Translate < LogStash::Filters::Base
     else
       @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
     end
-  end # def register
 
-  def close
-    @lookup.stop_scheduler
-  end
+    if @lookup.respond_to?(:reload_dictionary) && @refresh_interval > 0 # a scheduler interval of zero makes no sense
+      scheduler.interval("#{@refresh_interval}s", overlap: false) { @lookup.reload_dictionary }
+    end
+  end # def register
 
   def filter(event)
     return unless @updater.test_for_inclusion(event, @override)

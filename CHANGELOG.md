@@ -1,3 +1,6 @@
+## 3.4.0
+ - Refactor: leverage scheduler mixin [#93](https://github.com/logstash-plugins/logstash-filter-translate/pull/93)
+
 ## 3.3.1
   - Refactor: reading .csv for JRuby 9.3 compatibility [#94](https://github.com/logstash-plugins/logstash-filter-translate/pull/94)
 
