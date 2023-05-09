@@ -102,6 +102,11 @@ class Translate < LogStash::Filters::Base
   # as the original text, and the second column as the replacement.
   config :dictionary_path, :validate => :path
 
+  # Setting the maximum bytes size of the file in `dictionary_path`. This setting is effective for YAML file only.
+  # Snakeyaml 1.33 has a default limit 3MB. YAML file over the limit throws exception. JSON and CSV currently do not have such limit.
+  # The limit could be too small in some use cases. Setting a bigger number in `dictionary_file_max_bytes` to relax the restriction.
+  config :dictionary_file_max_bytes, :validate => :number, :default => 3_145_728
+
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
@@ -180,8 +185,12 @@ class Translate < LogStash::Filters::Base
       )
     end
 
+    if @dictionary_path && @dictionary_file_max_bytes <= 0
+      raise LogStash::ConfigurationError, "Please set a positive number in `dictionary_file_max_bytes => #{@dictionary_file_max_bytes}`."
+    end
+
     if @dictionary_path
-      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex)
+      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, params)
     else
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end

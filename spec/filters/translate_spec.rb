@@ -240,6 +240,45 @@ describe LogStash::Filters::Translate do
       end
     end
 
+    describe "when using a yml file with size limit" do
+      let(:config) do
+        {
+          "source"      => "status",
+          "target"      => "translation",
+          "dictionary_path"  => dictionary_path,
+          "dictionary_file_max_bytes" => dictionary_size  # the file is 18 bytes
+        }
+      end
+      let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
+      let(:event) { LogStash::Event.new("status" => "a") }
+
+      context "file is over size limit" do
+        let(:dictionary_size) { 17 }
+
+        it "raises exception" do
+          expect { subject.register }.to raise_error(/The incoming YAML document exceeds/)
+        end
+      end
+
+      context "file is within size limit" do
+        let(:dictionary_size) { 18 }
+
+        it "returns the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq(1)
+        end
+      end
+
+      context "file size set to zero" do
+        let(:dictionary_size) { 0 }
+
+        it "raises configuration exception" do
+          expect { subject.register }.to raise_error(LogStash::ConfigurationError, /Please set a positive number/)
+        end
+      end
+    end
+
     context "when using a map tagged yml file" do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
       let(:event) { LogStash::Event.new("status" => "six") }

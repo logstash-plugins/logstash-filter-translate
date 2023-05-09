@@ -1,3 +1,6 @@
+## 3.4.1
+  - Fix the limitation of the size of yaml file that exceeds 3MB
+
 ## 3.4.0
  - Refactor: leverage scheduler mixin [#93](https://github.com/logstash-plugins/logstash-filter-translate/pull/93)
 
