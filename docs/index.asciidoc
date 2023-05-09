@@ -96,6 +96,7 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 |Setting |Input type|Required
 | <<plugins-{type}s-{plugin}-destination>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-dictionary>> |<<hash,hash>>|No
+| <<plugins-{type}s-{plugin}-dictionary_file_max_bytes>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-dictionary_path>> |a valid filesystem path|No
 | <<plugins-{type}s-{plugin}-ecs_compatibility>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-exact>> |<<boolean,boolean>>|No
@@ -148,6 +149,15 @@ Example:
 ----
 
 NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
+
+[id="plugins-{type}s-{plugin}-dictionary_file_max_bytes"]
+===== `dictionary_file_max_bytes`
+
+  * Value type is <<number,number>>
+  * Default value is 3145728 (3MB)
+
+The maximum size of the file in `dictionary_path`. This setting is effective for YAML file only.
+YAML over the limit throws exception. JSON and CSV currently do not have such restriction.
 
 [id="plugins-{type}s-{plugin}-dictionary_path"]
 ===== `dictionary_path`
