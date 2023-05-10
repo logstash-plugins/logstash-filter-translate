@@ -105,7 +105,8 @@ class Translate < LogStash::Filters::Base
   # Setting the maximum bytes size of the file in `dictionary_path`. This setting is effective for YAML file only.
   # Snakeyaml 1.33 has a default limit 3MB. YAML file over the limit throws exception. JSON and CSV currently do not have such limit.
   # The limit could be too small in some use cases. Setting a bigger number in `dictionary_file_max_bytes` to relax the restriction.
-  config :dictionary_file_max_bytes, :validate => :number, :default => 3_145_728
+  # The default value is 128MB
+  config :dictionary_file_max_bytes, :validate => :number, :default => 134_217_728
 
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.

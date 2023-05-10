@@ -154,7 +154,7 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 ===== `dictionary_file_max_bytes`
 
   * Value type is <<number,number>>
-  * Default value is 3145728 (3MB)
+  * Default value is 134217728 (128MB)
 
 The maximum size of the file in `dictionary_path`. This setting is effective for YAML file only.
 YAML over the limit throws exception. JSON and CSV currently do not have such restriction.
