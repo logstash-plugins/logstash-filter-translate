@@ -102,11 +102,11 @@ class Translate < LogStash::Filters::Base
   # as the original text, and the second column as the replacement.
   config :dictionary_path, :validate => :path
 
-  # Setting the maximum bytes size of the file in `dictionary_path`. This setting is effective for YAML file only.
+  # The max amount of code points in the YAML file in `dictionary_path`. Please be aware that byte limit depends on the encoding.
   # Snakeyaml 1.33 has a default limit 3MB. YAML file over the limit throws exception. JSON and CSV currently do not have such limit.
-  # The limit could be too small in some use cases. Setting a bigger number in `dictionary_file_max_bytes` to relax the restriction.
+  # The limit could be too small in some use cases. Setting a bigger number in `yaml_dictionary_code_point_limit` to relax the restriction.
   # The default value is 128MB
-  config :dictionary_file_max_bytes, :validate => :number, :default => 134_217_728
+  config :yaml_dictionary_code_point_limit, :validate => :number
 
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
@@ -186,12 +186,21 @@ class Translate < LogStash::Filters::Base
       )
     end
 
-    if @dictionary_path && @dictionary_file_max_bytes <= 0
-      raise LogStash::ConfigurationError, "Please set a positive number in `dictionary_file_max_bytes => #{@dictionary_file_max_bytes}`."
+    # check and set yaml code point limit
+    if @dictionary_path
+      if yaml_file?(@dictionary_path)
+        @yaml_dictionary_code_point_limit ||= 134_217_728
+
+        if @yaml_dictionary_code_point_limit <= 0
+          raise LogStash::ConfigurationError, "Please set a positive number in `yaml_dictionary_code_point_limit => #{@yaml_dictionary_code_point_limit}`."
+        end
+      elsif @yaml_dictionary_code_point_limit != nil
+        raise LogStash::ConfigurationError, "Please remove `yaml_dictionary_code_point_limit` for dictionary file in JSON or CSV format"
+      end
     end
 
     if @dictionary_path
-      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, params)
+      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, @yaml_dictionary_code_point_limit)
     else
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
@@ -255,5 +264,9 @@ class Translate < LogStash::Filters::Base
       @logger.error("Something went wrong when attempting to translate from dictionary", :exception => e, :source => @source, :event => event.to_hash)
     end
   end # def filter
+
+  def yaml_file?(path)
+    /\.y[a]?ml$/.match(path)
+  end
 end # class LogStash::Filters::Translate
 end end

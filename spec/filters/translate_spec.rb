@@ -240,19 +240,19 @@ describe LogStash::Filters::Translate do
       end
     end
 
-    describe "when using a yml file with size limit" do
+    describe "when using a yml dictionary with code point limit" do
       let(:config) do
         {
           "source"      => "status",
           "target"      => "translation",
           "dictionary_path"  => dictionary_path,
-          "dictionary_file_max_bytes" => dictionary_size  # the file is 18 bytes
+          "yaml_dictionary_code_point_limit" => dictionary_size  # the file is 18 bytes
         }
       end
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
       let(:event) { LogStash::Event.new("status" => "a") }
 
-      context "file is over size limit" do
+      context "dictionary is over limit" do
         let(:dictionary_size) { 17 }
 
         it "raises exception" do
@@ -260,7 +260,7 @@ describe LogStash::Filters::Translate do
         end
       end
 
-      context "file is within size limit" do
+      context "dictionary is within limit" do
         let(:dictionary_size) { 18 }
 
         it "returns the exact translation" do
@@ -270,11 +270,51 @@ describe LogStash::Filters::Translate do
         end
       end
 
-      context "file size set to zero" do
+      context "limit set to zero" do
         let(:dictionary_size) { 0 }
 
         it "raises configuration exception" do
           expect { subject.register }.to raise_error(LogStash::ConfigurationError, /Please set a positive number/)
+        end
+      end
+
+      context "limit is unset" do
+        let(:config) do
+          {
+            "source"      => "status",
+            "target"      => "translation",
+            "dictionary_path"  => dictionary_path,
+          }
+        end
+
+        it "sets the limit to 128MB" do
+          subject.register
+          expect(subject.instance_variable_get(:@yaml_dictionary_code_point_limit)).to eq(134_217_728)
+        end
+      end
+
+      context "dictionary is json and limit is set" do
+        let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.json") }
+        let(:dictionary_size) { 100 }
+
+        it "raises configuration exception" do
+          expect { subject.register }.to raise_error(LogStash::ConfigurationError, /Please remove `yaml_dictionary_code_point_limit` for dictionary file in JSON or CSV format/)
+        end
+      end
+
+      context "dictionary is json and limit is unset" do
+        let(:config) do
+          {
+            "source"      => "status",
+            "target"      => "translation",
+            "dictionary_path"  => TranslateUtil.build_fixture_path("dict.json"),
+          }
+        end
+
+        it "returns the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq(10)
         end
       end
     end

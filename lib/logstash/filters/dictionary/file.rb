@@ -9,9 +9,9 @@ module LogStash module Filters module Dictionary
 
     include LogStash::Util::Loggable
 
-    def self.create(path, refresh_interval, refresh_behaviour, exact, regex, params)
+    def self.create(path, refresh_interval, refresh_behaviour, exact, regex, yaml_code_point_limit)
       if /\.y[a]?ml$/.match(path)
-        instance = YamlFile.new(path, refresh_interval, exact, regex, params["dictionary_file_max_bytes"])
+        instance = YamlFile.new(path, refresh_interval, exact, regex, yaml_code_point_limit)
       elsif path.end_with?(".json")
         instance = JsonFile.new(path, refresh_interval, exact, regex)
       elsif path.end_with?(".csv")
