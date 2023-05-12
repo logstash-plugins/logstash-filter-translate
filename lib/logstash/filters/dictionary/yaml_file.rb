@@ -7,11 +7,11 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def initialize_for_file_type(file_max_bytes)
+    def initialize_for_file_type(yaml_code_point_limit)
       @visitor = YamlVisitor.create
 
       @parser = Psych::Parser.new(Psych::TreeBuilder.new)
-      @parser.code_point_limit = file_max_bytes
+      @parser.code_point_limit = yaml_code_point_limit
     end
 
     def read_file_into_dictionary
