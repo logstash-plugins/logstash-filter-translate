@@ -31,7 +31,7 @@ module LogStash module Filters module Dictionary
 
     attr_reader :dictionary, :fetch_strategy
 
-    def initialize(path, refresh_interval, exact, regex, yaml_code_point_limit = nil)
+    def initialize(path, refresh_interval, exact, regex, **file_type_args)
       @dictionary_path = path
       @refresh_interval = refresh_interval
       @short_refresh = @refresh_interval <= 300
