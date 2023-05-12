@@ -39,7 +39,7 @@ module LogStash module Filters module Dictionary
       @write_lock = rw_lock.writeLock
       @dictionary = Hash.new
       @update_method = method(:merge_dictionary)
-      initialize_for_file_type(file_max_bytes)
+      initialize_for_file_type(yaml_code_point_limit)
       args = [@dictionary, rw_lock]
       klass = case
               when exact && regex then FetchStrategy::File::ExactRegex
