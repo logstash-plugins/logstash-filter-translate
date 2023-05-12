@@ -55,7 +55,7 @@ module LogStash module Filters module Dictionary
         @dictionary_mtime = ::File.mtime(@dictionary_path).to_f
         @update_method.call
       rescue Errno::ENOENT
-        @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+        logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       rescue => e
         loading_exception(e, raise_exception)
       end
@@ -120,7 +120,7 @@ module LogStash module Filters module Dictionary
         dfe.set_backtrace(e.backtrace)
         raise dfe
       else
-        @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
+        logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
     end
   end
