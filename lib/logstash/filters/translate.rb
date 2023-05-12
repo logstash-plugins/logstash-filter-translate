@@ -105,7 +105,7 @@ class Translate < LogStash::Filters::Base
   # The max amount of code points in the YAML file in `dictionary_path`. Please be aware that byte limit depends on the encoding.
   # Snakeyaml 1.33 has a default limit 3MB. YAML file over the limit throws exception. JSON and CSV currently do not have such limit.
   # The limit could be too small in some use cases. Setting a bigger number in `yaml_dictionary_code_point_limit` to relax the restriction.
-  # The default value is 128MB
+  # The default value is 128MB for code points of size 1 byte
   config :yaml_dictionary_code_point_limit, :validate => :number
 
   # When using a dictionary file, this setting will indicate how frequently
