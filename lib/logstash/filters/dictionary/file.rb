@@ -9,9 +9,9 @@ module LogStash module Filters module Dictionary
 
     include LogStash::Util::Loggable
 
-    def self.create(path, refresh_interval, refresh_behaviour, exact, regex)
+    def self.create(path, refresh_interval, refresh_behaviour, exact, regex, **file_type_args)
       if /\.y[a]?ml$/.match(path)
-        instance = YamlFile.new(path, refresh_interval, exact, regex)
+        instance = YamlFile.new(path, refresh_interval, exact, regex, file_type_args)
       elsif path.end_with?(".json")
         instance = JsonFile.new(path, refresh_interval, exact, regex)
       elsif path.end_with?(".csv")
@@ -31,7 +31,7 @@ module LogStash module Filters module Dictionary
 
     attr_reader :dictionary, :fetch_strategy
 
-    def initialize(path, refresh_interval, exact, regex)
+    def initialize(path, refresh_interval, exact, regex, **file_type_args)
       @dictionary_path = path
       @refresh_interval = refresh_interval
       @short_refresh = @refresh_interval <= 300
@@ -39,7 +39,7 @@ module LogStash module Filters module Dictionary
       @write_lock = rw_lock.writeLock
       @dictionary = Hash.new
       @update_method = method(:merge_dictionary)
-      initialize_for_file_type
+      initialize_for_file_type(file_type_args)
       args = [@dictionary, rw_lock]
       klass = case
               when exact && regex then FetchStrategy::File::ExactRegex
@@ -55,7 +55,7 @@ module LogStash module Filters module Dictionary
         @dictionary_mtime = ::File.mtime(@dictionary_path).to_f
         @update_method.call
       rescue Errno::ENOENT
-        @logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
+        logger.warn("dictionary file read failure, continuing with old dictionary", :path => @dictionary_path)
       rescue => e
         loading_exception(e, raise_exception)
       end
@@ -68,7 +68,7 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def initialize_for_file_type
+    def initialize_for_file_type(**file_type_args)
       # sub class specific initializer
     end
 
@@ -120,7 +120,7 @@ module LogStash module Filters module Dictionary
         dfe.set_backtrace(e.backtrace)
         raise dfe
       else
-        @logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
+        logger.warn("#{msg}, continuing with old dictionary", :dictionary_path => @dictionary_path)
       end
     end
   end

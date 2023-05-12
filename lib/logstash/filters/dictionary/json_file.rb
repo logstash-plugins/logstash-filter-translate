@@ -6,9 +6,6 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def initialize_for_file_type
-    end
-
     def read_file_into_dictionary
       content = IO.read(@dictionary_path, :mode => 'r:bom|utf-8')
       @dictionary.update(LogStash::Json.load(content)) unless content.nil? || content.empty?
