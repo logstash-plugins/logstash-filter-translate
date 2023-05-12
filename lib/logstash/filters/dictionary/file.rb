@@ -68,7 +68,7 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def initialize_for_file_type(yaml_code_point_limit)
+    def initialize_for_file_type(**file_type_args)
       # sub class specific initializer
     end
 
