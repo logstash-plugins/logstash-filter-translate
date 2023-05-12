@@ -427,7 +427,7 @@ the filter will succeed. This will clobber the old value of the source field!
 ===== `yaml_dictionary_code_point_limit`
 
 * Value type is <<number,number>>
-* Default value is 134217728 (128MB)
+* Default value is 134217728 (128MB for 1 byte code points)
 
 The max amount of code points in the YAML file in `dictionary_path`. Please be aware that byte limit depends on the encoding.
 This setting is effective for YAML file only. YAML over the limit throws exception.
