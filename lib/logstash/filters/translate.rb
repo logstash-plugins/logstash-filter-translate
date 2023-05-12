@@ -193,14 +193,14 @@ class Translate < LogStash::Filters::Base
 
         if @yaml_dictionary_code_point_limit <= 0
           raise LogStash::ConfigurationError, "Please set a positive number in `yaml_dictionary_code_point_limit => #{@yaml_dictionary_code_point_limit}`."
+        else
+          @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, yaml_code_point_limit: @yaml_dictionary_code_point_limit)
         end
       elsif @yaml_dictionary_code_point_limit != nil
         raise LogStash::ConfigurationError, "Please remove `yaml_dictionary_code_point_limit` for dictionary file in JSON or CSV format"
+      else
+        @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex)
       end
-    end
-
-    if @dictionary_path
-      @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, @yaml_dictionary_code_point_limit)
     else
       @lookup = Dictionary::Memory.new(@dictionary, @exact, @regex)
     end
