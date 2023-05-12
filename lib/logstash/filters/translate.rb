@@ -187,6 +187,7 @@ class Translate < LogStash::Filters::Base
     end
 
     # check and set yaml code point limit
+    # set lookup dictionary
     if @dictionary_path
       if yaml_file?(@dictionary_path)
         @yaml_dictionary_code_point_limit ||= 134_217_728
