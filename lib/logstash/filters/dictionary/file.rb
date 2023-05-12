@@ -9,9 +9,9 @@ module LogStash module Filters module Dictionary
 
     include LogStash::Util::Loggable
 
-    def self.create(path, refresh_interval, refresh_behaviour, exact, regex, yaml_code_point_limit)
+    def self.create(path, refresh_interval, refresh_behaviour, exact, regex, **file_type_args)
       if /\.y[a]?ml$/.match(path)
-        instance = YamlFile.new(path, refresh_interval, exact, regex, yaml_code_point_limit)
+        instance = YamlFile.new(path, refresh_interval, exact, regex, file_type_args)
       elsif path.end_with?(".json")
         instance = JsonFile.new(path, refresh_interval, exact, regex)
       elsif path.end_with?(".csv")
@@ -39,7 +39,7 @@ module LogStash module Filters module Dictionary
       @write_lock = rw_lock.writeLock
       @dictionary = Hash.new
       @update_method = method(:merge_dictionary)
-      initialize_for_file_type(yaml_code_point_limit: file_type_args[:yaml_code_point_limit])
+      initialize_for_file_type(file_type_args)
       args = [@dictionary, rw_lock]
       klass = case
               when exact && regex then FetchStrategy::File::ExactRegex
