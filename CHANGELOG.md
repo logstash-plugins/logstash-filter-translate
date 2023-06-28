@@ -1,5 +1,5 @@
 ## 3.4.2
-  - Fixed JRuby 9.4 compatibility issue[#n](https://github.com/logstash-plugins/logstash-filter-translate/pull/n)
+  - Fixed JRuby 9.4 compatibility issue[#98](https://github.com/logstash-plugins/logstash-filter-translate/pull/98)
 
 ## 3.4.1
   - Fix the limitation of the size of yaml file that exceeds 3MB [#97](https://github.com/logstash-plugins/logstash-filter-translate/pull/97)
