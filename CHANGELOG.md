@@ -1,3 +1,6 @@
+## 3.4.3
+  - Allow YamlFile's Psych::Parser and Visitor instances to be garbage collected [#104](https://github.com/logstash-plugins/logstash-filter-translate/pull/104)
+
 ## 3.4.2
   - Fixed JRuby 9.4 compatibility issue[#98](https://github.com/logstash-plugins/logstash-filter-translate/pull/98)
 
