@@ -129,6 +129,7 @@ deprecated[3.3.0, Use <<plugins-{type}s-{plugin}-target>> instead. In 4.0 this s
 
   * Value type is <<hash,hash>>
   * Default value is `{}`
+  * This setting _cannot_ be combined with `dictionary_path`
 
 The dictionary to use for translation, when specified in the logstash filter
 configuration item (i.e. do not use the `dictionary_path` file).
@@ -155,6 +156,8 @@ NOTE: It is an error to specify both `dictionary` and `dictionary_path`.
 
   * Value type is <<path,path>>
   * There is no default value for this setting.
+  * This setting _cannot_ be combined with `dictionary`
+  * See also: <<plugins-{type}s-{plugin}-refresh_interval>> and <<plugins-{type}s-{plugin}-refresh_behaviour>>
 
 The full path of the external dictionary file. The format of the table should be
 a standard YAML, JSON, or CSV. 
@@ -390,6 +393,9 @@ Resources on regex formatting are available online.
 ===== `refresh_behaviour`
 
   * Value type is <<string,string>>
+  * Acceptable values are:
+  ** `merge`
+  ** `replace`
   * Default value is `merge`
 
 When using a dictionary file, this setting indicates how the update will be executed.
