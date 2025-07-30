@@ -12,15 +12,16 @@ java_import 'org.snakeyaml.engine.v2.events.ScalarEvent'
 
 module LogStash module Filters module Dictionary
   class StreamingYamlDictParser
-    def initialize(filename)
-      settings = LoadSettings.builder.build
+    def initialize(filename, yaml_code_point_limit)
+      settings = LoadSettings.builder
+        .set_code_point_limit(yaml_code_point_limit)
+        .build
 
       stream = FileInputStream.new(filename)
       reader = InputStreamReader.new(stream, StandardCharsets::UTF_8)
       stream_reader = StreamReader.new(reader, settings)
 
       @parser = ParserImpl.new(stream_reader, settings)
-      @next_event = nil
 
       skip_until(MappingStartEvent)
     end
@@ -37,13 +38,13 @@ module LogStash module Filters module Dictionary
     private
 
     def next_event
-      @next_event || @parser.next
+      @parser.next
     ensure
-      @next_event = nil
+      nil
     end
 
     def peek_event
-      @next_event ||= @parser.next
+      @parser.peek_event
     end
 
     def skip_until(event_class)
@@ -75,7 +76,7 @@ module LogStash module Filters module Dictionary
         value = parse_node
         hash[key] = value
       end
-      next_event # consume MappingEndEvent
+      next_event
       hash
     end
 
@@ -84,7 +85,7 @@ module LogStash module Filters module Dictionary
       while peek_event && !peek_event.is_a?(SequenceEndEvent)
         array << parse_node
       end
-      next_event # consume SequenceEndEvent
+      next_event
       array
     end
     def parse_scalar(value)
@@ -99,7 +100,7 @@ module LogStash module Filters module Dictionary
         elsif value.match?(/\A-?\d+\.\d+\z/)
           value.to_f
         else
-          value  # keep as string
+          value
         end
       end
     end
