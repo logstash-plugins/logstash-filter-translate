@@ -59,7 +59,7 @@ module LogStash module Filters module Dictionary
 
       case event
       when ScalarEvent
-        parse_scalar(event.value)
+        parse_scalar(event)
       when MappingStartEvent
         parse_mapping
       when SequenceStartEvent
@@ -88,7 +88,13 @@ module LogStash module Filters module Dictionary
       next_event
       array
     end
-    def parse_scalar(value)
+    def parse_scalar(scalar)
+      value = scalar.value
+      # return quoted scalars as they are
+      # e.g. don't convert "true" to true
+      return value unless scalar.is_plain
+
+      # otherwise let's do some checking and conversions
       case value
       when 'null', '', '~' then nil
       when 'true' then true
