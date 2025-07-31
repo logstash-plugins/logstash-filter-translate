@@ -238,6 +238,23 @@ describe LogStash::Filters::Translate do
         subject.filter(event)
         expect(event.get("translation")).to eq(1)
       end
+
+      describe "yaml_load_strategy" do
+        let(:one_shot_parse_filter) { subject }
+        let(:streaming_parse_filter) { described_class.new(config.merge("yaml_load_strategy" => 'streaming')) }
+
+        before(:each) do
+          subject.register
+          streaming_parse_filter.register
+        end
+        let(:one_shot_dictionary) { one_shot_parse_filter.lookup.dictionary }
+        let(:streaming_dictionary) { streaming_parse_filter.lookup.dictionary }
+        it "produces an equivalent dictionary for both strategies" do
+          puts one_shot_dictionary.inspect
+          puts streaming_dictionary.inspect
+          expect(one_shot_dictionary).to eq(streaming_dictionary)
+        end
+      end
     end
 
     describe "when using a yml dictionary with code point limit" do
@@ -246,14 +263,16 @@ describe LogStash::Filters::Translate do
           "source"      => "status",
           "target"      => "translation",
           "dictionary_path"  => dictionary_path,
-          "yaml_dictionary_code_point_limit" => dictionary_size  # the file is 18 bytes
+          "yaml_dictionary_code_point_limit" => codepoint_limit
         }
       end
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
+      let(:dictionary_size) { IO.read(dictionary_path).size }
       let(:event) { LogStash::Event.new("status" => "a") }
+      let(:codepoint_limit) { dictionary_size }
 
-      context "dictionary is over limit" do
-        let(:dictionary_size) { 17 }
+      context "codepoint limit under dictionary size" do
+        let(:codepoint_limit) { dictionary_size / 2 }
 
         it "raises exception" do
           expect { subject.register }.to raise_error(/The incoming YAML document exceeds/)
@@ -261,8 +280,6 @@ describe LogStash::Filters::Translate do
       end
 
       context "dictionary is within limit" do
-        let(:dictionary_size) { 18 }
-
         it "returns the exact translation" do
           subject.register
           subject.filter(event)
