@@ -1,34 +1,30 @@
-java_import 'org.snakeyaml.engine.v2.api.LoadSettings'
-java_import 'org.snakeyaml.engine.v2.parser.ParserImpl'
-java_import 'org.snakeyaml.engine.v2.scanner.StreamReader'
-java_import 'java.io.FileInputStream'
-java_import 'java.io.InputStreamReader'
-java_import 'java.nio.charset.StandardCharsets'
-java_import 'org.snakeyaml.engine.v2.events.MappingStartEvent'
-java_import 'org.snakeyaml.engine.v2.events.MappingEndEvent'
-java_import 'org.snakeyaml.engine.v2.events.SequenceStartEvent'
-java_import 'org.snakeyaml.engine.v2.events.SequenceEndEvent'
-java_import 'org.snakeyaml.engine.v2.events.ScalarEvent'
-
 module LogStash module Filters module Dictionary
   class StreamingYamlDictParser
+    def snakeYamlEngineV2
+      Java::org.snakeyaml.engine.v2
+    end
+
+    def snakeYamlEngineV2Events
+      Java::org.snakeyaml.engine.v2.events
+    end
+
     def initialize(filename, yaml_code_point_limit)
-      settings = LoadSettings.builder
+      settings = snakeYamlEngineV2.api.LoadSettings.builder
         .set_code_point_limit(yaml_code_point_limit)
         .build
 
-      stream = FileInputStream.new(filename)
-      reader = InputStreamReader.new(stream, StandardCharsets::UTF_8)
-      stream_reader = StreamReader.new(reader, settings)
+      stream = Java::java.io.FileInputStream.new(filename)
+      reader = Java::java.io.InputStreamReader.new(stream, Java::java.nio.charset.StandardCharsets::UTF_8)
+      stream_reader = snakeYamlEngineV2.scanner.StreamReader.new(reader, settings)
 
-      @parser = ParserImpl.new(stream_reader, settings)
+      @parser = snakeYamlEngineV2.parser.ParserImpl.new(stream_reader, settings)
 
-      skip_until(MappingStartEvent)
+      skip_until(snakeYamlEngineV2Events.MappingStartEvent)
     end
 
 
     def each_pair
-      while peek_event && !peek_event.is_a?(MappingEndEvent)
+      while peek_event && !peek_event.is_a?(snakeYamlEngineV2Events.MappingEndEvent)
         key = parse_node
         value = parse_node
         yield(key, value)
@@ -58,11 +54,11 @@ module LogStash module Filters module Dictionary
       event = next_event
 
       case event
-      when ScalarEvent
+      when snakeYamlEngineV2Events.ScalarEvent
         parse_scalar(event)
-      when MappingStartEvent
+      when snakeYamlEngineV2Events.MappingStartEvent
         parse_mapping
-      when SequenceStartEvent
+      when snakeYamlEngineV2Events.SequenceStartEvent
         parse_sequence
       else
         raise "Unexpected event: #{event.class}"
@@ -71,7 +67,7 @@ module LogStash module Filters module Dictionary
 
     def parse_mapping
       hash = {}
-      while peek_event && !peek_event.is_a?(MappingEndEvent)
+      while peek_event && !peek_event.is_a?(snakeYamlEngineV2Events.MappingEndEvent)
         key = parse_node
         value = parse_node
         hash[key] = value
@@ -82,7 +78,7 @@ module LogStash module Filters module Dictionary
 
     def parse_sequence
       array = []
-      while peek_event && !peek_event.is_a?(SequenceEndEvent)
+      while peek_event && !peek_event.is_a?(snakeYamlEngineV2Events.SequenceEndEvent)
         array << parse_node
       end
       next_event

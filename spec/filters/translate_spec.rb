@@ -250,8 +250,6 @@ describe LogStash::Filters::Translate do
         let(:one_shot_dictionary) { one_shot_parse_filter.lookup.dictionary }
         let(:streaming_dictionary) { streaming_parse_filter.lookup.dictionary }
         it "produces an equivalent dictionary for both strategies" do
-          puts one_shot_dictionary.inspect
-          puts streaming_dictionary.inspect
           expect(one_shot_dictionary).to eq(streaming_dictionary)
         end
       end
