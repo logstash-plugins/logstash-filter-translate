@@ -108,6 +108,10 @@ class Translate < LogStash::Filters::Base
   # The default value is 128MB for code points of size 1 byte
   config :yaml_dictionary_code_point_limit, :validate => :number
 
+  # either load the entire yaml into memory before generating the in-memory dictionary
+  # alternatively "streaming" will gradually build the dictionary with little memory overhead
+  config :yaml_load_strategy, :validate => ["streaming", "one_shot"], :default => "one_shot"
+
   # When using a dictionary file, this setting will indicate how frequently
   # (in seconds) logstash will check the dictionary file for updates.
   config :refresh_interval, :validate => :number, :default => 300
@@ -195,7 +199,7 @@ class Translate < LogStash::Filters::Base
         if @yaml_dictionary_code_point_limit <= 0
           raise LogStash::ConfigurationError, "Please set a positive number in `yaml_dictionary_code_point_limit => #{@yaml_dictionary_code_point_limit}`."
         else
-          @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, yaml_code_point_limit: @yaml_dictionary_code_point_limit)
+          @lookup = Dictionary::File.create(@dictionary_path, @refresh_interval, @refresh_behaviour, @exact, @regex, yaml_code_point_limit: @yaml_dictionary_code_point_limit, yaml_load_strategy: @yaml_load_strategy)
         end
       elsif @yaml_dictionary_code_point_limit != nil
         raise LogStash::ConfigurationError, "Please remove `yaml_dictionary_code_point_limit` for dictionary file in JSON or CSV format"
