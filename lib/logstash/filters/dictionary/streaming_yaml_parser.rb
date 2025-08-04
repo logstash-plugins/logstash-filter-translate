@@ -5,7 +5,7 @@ module LogStash module Filters module Dictionary
     end
 
     def snakeYamlEngineV2Events
-      Java::org.snakeyaml.engine.v2.events
+      snakeYamlEngineV2.events
     end
 
     def initialize(filename, yaml_code_point_limit)
