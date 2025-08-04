@@ -84,6 +84,7 @@ module LogStash module Filters module Dictionary
       next_event
       array
     end
+    
     def parse_scalar(scalar)
       value = scalar.value
       # return quoted scalars as they are
