@@ -29,6 +29,8 @@ module LogStash module Filters module Dictionary
         value = parse_node
         yield(key, value)
       end
+    rescue Java::JavaUtil::NoSuchElementException => e
+      return nil
     end
 
     private

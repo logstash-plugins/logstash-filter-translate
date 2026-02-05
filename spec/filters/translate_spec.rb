@@ -651,10 +651,19 @@ describe LogStash::Filters::Translate do
       let(:event) { LogStash::Event.new("status" => "a") }
 
       it "return the exact translation" do
-
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("no match")
+      end
+      context "when using streaming" do
+        before(:each) do
+          config.merge!("yaml_load_strategy" => 'streaming')
+        end
+        it "return the exact translation" do
+          subject.register
+          subject.filter(event)
+          expect(event.get("translation")).to eq("no match")
+        end
       end
     end
 
