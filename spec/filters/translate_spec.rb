@@ -87,7 +87,7 @@ describe LogStash::Filters::Translate do
 
       let(:event) { LogStash::Event.new("status" => "200 & 500") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("OK & Server Error")
@@ -109,7 +109,7 @@ describe LogStash::Filters::Translate do
 
       let(:event) { LogStash::Event.new("status" => "200 & 500") }
 
-      it "return the exact regex translation" do
+      it "returns the exact regex translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("OK & Server Error")
@@ -134,7 +134,7 @@ describe LogStash::Filters::Translate do
 
       let(:event) { LogStash::Event.new("status" => "200") }
 
-      it "return the exact regex translation" do
+      it "returns the exact regex translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("OK")
@@ -156,7 +156,7 @@ describe LogStash::Filters::Translate do
 
       let(:event) { LogStash::Event.new("status" => "200") }
 
-      it "return the exact regex translation" do
+      it "returns the exact regex translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("OK")
@@ -181,7 +181,7 @@ describe LogStash::Filters::Translate do
 
         let(:event) { LogStash::Event.new("status" => "200") }
 
-        it "return the exact translation" do
+        it "returns the exact translation" do
           subject.register
           subject.filter(event)
           expect(event.get("translation")).to eq("no match")
@@ -199,7 +199,7 @@ describe LogStash::Filters::Translate do
 
         let(:event) { LogStash::Event.new("status" => "200", "missing_translation" => "missing no match") }
 
-        it "return the exact translation" do
+        it "returns the exact translation" do
           subject.register
           subject.filter(event)
           expect(event.get("translation")).to eq("missing no match")
@@ -233,7 +233,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.yml") }
       let(:event) { LogStash::Event.new("status" => "a") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq(1)
@@ -338,7 +338,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-map-dict.yml") }
       let(:event) { LogStash::Event.new("status" => "six") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("val-6-1|val-6-2")
@@ -349,7 +349,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("tag-omap-dict.yml") }
       let(:event) { LogStash::Event.new("status" => "nine") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("val-9-1|val-9-2")
@@ -360,7 +360,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.json") }
       let(:event) { LogStash::Event.new("status" => "b") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq(20)
@@ -371,7 +371,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path)  { TranslateUtil.build_fixture_path("dict.csv") }
       let(:event) { LogStash::Event.new("status" => "c") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("300")
@@ -650,18 +650,19 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path) { directory.join("dict-e.yml") }
       let(:event) { LogStash::Event.new("status" => "a") }
 
-      it "return the exact translation" do
+      before(:each) do
         subject.register
         subject.filter(event)
+      end
+
+      it "returns the exact translation" do
         expect(event.get("translation")).to eq("no match")
       end
+
       context "when using streaming" do
-        before(:each) do
-          config.merge!("yaml_load_strategy" => 'streaming')
-        end
-        it "return the exact translation" do
-          subject.register
-          subject.filter(event)
+        before(:each) { config.merge!("yaml_load_strategy" => 'streaming') }
+
+        it "returns the exact translation" do
           expect(event.get("translation")).to eq("no match")
         end
       end
@@ -671,7 +672,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path) { directory.join("dict-e.json") }
       let(:event) { LogStash::Event.new("status" => "b") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("no match")
@@ -682,7 +683,7 @@ describe LogStash::Filters::Translate do
       let(:dictionary_path) { directory.join("dict-e.csv") }
       let(:event) { LogStash::Event.new("status" => "c") }
 
-      it "return the exact translation" do
+      it "returns the exact translation" do
         subject.register
         subject.filter(event)
         expect(event.get("translation")).to eq("no match")

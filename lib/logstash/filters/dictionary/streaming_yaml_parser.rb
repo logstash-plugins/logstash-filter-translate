@@ -29,20 +29,18 @@ module LogStash module Filters module Dictionary
         value = parse_node
         yield(key, value)
       end
-    rescue Java::JavaUtil::NoSuchElementException => e
-      return nil
     end
 
     private
 
     def next_event
       @parser.next
-    ensure
-      nil
     end
 
     def peek_event
       @parser.peek_event
+    rescue Java::JavaUtil::NoSuchElementException => e
+      return nil
     end
 
     def skip_until(event_class)
