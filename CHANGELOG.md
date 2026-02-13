@@ -1,3 +1,6 @@
+## 3.5.1
+  - Support 0 byte dictionaries in streaming YAML parsing similar to one-shot [#109](https://github.com/logstash-plugins/logstash-filter-translate/pull/109)
+
 ## 3.5.0
   - Introduce opt-in "yaml_load_strategy => streaming" to stream parse YAML dictionaries [#106](https://github.com/logstash-plugins/logstash-filter-translate/pull/106)
 
