@@ -35,12 +35,12 @@ module LogStash module Filters module Dictionary
 
     def next_event
       @parser.next
-    ensure
-      nil
     end
 
     def peek_event
       @parser.peek_event
+    rescue Java::JavaUtil::NoSuchElementException => e
+      return nil
     end
 
     def skip_until(event_class)
