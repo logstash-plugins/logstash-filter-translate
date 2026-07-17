@@ -35,6 +35,7 @@ describe LogStash::Filters::Translate do
         file.puts("a,1\nb,2\nc,3\n")
       end
       subject.register
+      allow(subject.lookup).to receive(:logger).and_return(double("LookupLogger").as_null_object)
     end
 
     after do
@@ -70,6 +71,38 @@ describe LogStash::Filters::Translate do
       it "updates the event after scheduled reload" do
         actions.activate_quietly
         actions.assert_no_errors
+      end
+
+      context "when replacement file is invalid" do
+
+        let(:actions) do
+          RSpec::Sequencing
+            .run("translate") do
+              subject.filter(event)
+              wait(0.1).for{event.get("[translation]")}.to eq("2"), "field [translation] did not eq '2'"
+            end
+            .then_after(1,"modify file with invalid CSV") do
+              dictionary_path.open("w") do |file|
+                file.puts(%q(a,11\nb,12,c,"\n)) # intentional unclosed quote
+              end
+            end
+            .then_after(1.2, "wait then translate again") do
+              try(5) do
+                subject.filter(event)
+                wait(0.5).for{event.get("[translation]")}.to eq("2"), "field [translation] did not eq '2'"
+              end
+            end
+            .then("stop") do
+              subject.close
+            end
+        end
+
+        it "logs a warning with the parse error but keeps processing with existing definitions" do
+          actions.activate_quietly
+          actions.assert_no_errors
+
+          expect(subject.lookup.logger).to have_received(:warn).with(/continuing with old dictionary/, anything)
+        end
       end
     end
 
