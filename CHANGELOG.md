@@ -1,3 +1,6 @@
+## 3.5.1
+  - Fixes an issue where failing to load a dictionary with `refresh_behaviour => replace` could result in the filter continuing to run with an empty dictionary [#112](https://github.com/logstash-plugins/logstash-filter-translate/issues/112).
+
 ## 3.5.0
   - Introduce opt-in "yaml_load_strategy => streaming" to stream parse YAML dictionaries [#106](https://github.com/logstash-plugins/logstash-filter-translate/pull/106)
 

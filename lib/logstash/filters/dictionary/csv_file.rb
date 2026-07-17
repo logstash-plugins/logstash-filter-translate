@@ -6,9 +6,9 @@ module LogStash module Filters module Dictionary
 
     protected
 
-    def read_file_into_dictionary
+    def read_dictionary
       ::CSV.open(@dictionary_path, 'r:bom|utf-8') do |csv|
-        csv.each { |k,v| @dictionary[k] = v }
+        csv.each_with_object({}) { |(k,v), dictionary| dictionary[k] = v }
       end
     end
   end

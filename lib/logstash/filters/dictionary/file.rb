@@ -72,8 +72,12 @@ module LogStash module Filters module Dictionary
       # sub class specific initializer
     end
 
-    def read_file_into_dictionary
-      # defined in csv_file, yaml_file and json_file
+    ##
+    # read the dictionary from file into a new hash
+    # @return [Hash{String=>Object}]
+    def read_dictionary
+      # defined in concrete implementation
+      fail NotImplementedError, "#{self.class} does not implement `read_dictionary`"
     end
 
     private
@@ -81,7 +85,7 @@ module LogStash module Filters module Dictionary
     def merge_dictionary
       @write_lock.lock
       begin
-        read_file_into_dictionary
+        @dictionary.update(read_dictionary)
         @fetch_strategy.dictionary_updated
       ensure
         @write_lock.unlock
@@ -91,8 +95,7 @@ module LogStash module Filters module Dictionary
     def replace_dictionary
       @write_lock.lock
       begin
-        @dictionary.clear
-        read_file_into_dictionary
+        @dictionary.replace(read_dictionary)
         @fetch_strategy.dictionary_updated
       ensure
         @write_lock.unlock

@@ -4,11 +4,16 @@ require "json"
 module LogStash module Filters module Dictionary
   class JsonFile < File
 
+    EMPTY = Hash.new.freeze
+    private_constant :EMPTY
+
     protected
 
-    def read_file_into_dictionary
+    def read_dictionary
       content = IO.read(@dictionary_path, :mode => 'r:bom|utf-8')
-      @dictionary.update(LogStash::Json.load(content)) unless content.nil? || content.empty?
+      return EMPTY if content.nil? || content.empty?
+
+      LogStash::Json.load(content)
     end
   end
 end end end
