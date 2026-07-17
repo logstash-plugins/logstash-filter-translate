@@ -249,11 +249,11 @@ class Translate < LogStash::Filters::Base
       @updater = ArrayOfMapsValueUpdate.new(@iterate_on, @source, @target, @fallback, @lookup)
     end
 
-    @logger.debug? && @logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
+    logger.debug? && logger.debug("#{self.class.name}: Dictionary - ", :dictionary => @lookup.dictionary)
     if @exact
-      @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Exact")
+      logger.debug? && logger.debug("#{self.class.name}: Dictionary translation method - Exact")
     else
-      @logger.debug? && @logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
+      logger.debug? && logger.debug("#{self.class.name}: Dictionary translation method - Fuzzy")
     end
 
     if @lookup.respond_to?(:reload_dictionary) && @refresh_interval > 0 # a scheduler interval of zero makes no sense

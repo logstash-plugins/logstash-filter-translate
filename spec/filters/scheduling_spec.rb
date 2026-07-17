@@ -127,6 +127,7 @@ describe LogStash::Filters::Translate do
       directory
       wait(1.0).for{Dir.exist?(directory)}.to eq(true)
       LogStash::Filters::Dictionary.create_huge_json_dictionary(directory, "dict-h.json", dictionary_size)
+      allow(subject).to receive(:logger).and_return(double("Logger").as_null_object)
       subject.register
     end
 
@@ -176,6 +177,7 @@ describe LogStash::Filters::Translate do
       directory
       wait(1.0).for{Dir.exist?(directory)}.to eq(true)
       LogStash::Filters::Dictionary.create_huge_csv_dictionary(directory, "dict-h.csv", dictionary_size)
+      allow(subject).to receive(:logger).and_return(double("Logger").as_null_object)
       subject.register
     end
 
