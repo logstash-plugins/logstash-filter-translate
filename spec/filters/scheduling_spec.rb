@@ -94,8 +94,14 @@ describe LogStash::Filters::Translate do
               file.puts("a,11\nb,12\nd,14\n") # changes a+b, removes c, adds d
             end
           end
-          .then_after(2, "translate again, ensuring we use the replacement dictionary") do
-
+          .then_after(1.2, "wait the scheduler load the new definition") do
+            try(5) do
+              flag_event = LogStash::Event.new("status" => "a" )
+              subject.filter(flag_event)
+              wait(0.5).for { flag_event.get("translation") }.to eq("11")
+            end
+          end
+          .then("translate again, ensuring we use the replacement dictionary") do
             event_a = LogStash::Event.new("status" => "a" )
             event_b = LogStash::Event.new("status" => "b" )
             event_c = LogStash::Event.new("status" => "c" )
