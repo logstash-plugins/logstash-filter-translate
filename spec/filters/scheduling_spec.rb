@@ -65,6 +65,8 @@ describe LogStash::Filters::Translate do
             end
           end
           .then("stop") do
+            # let an in-flight reload finish before close kills the scheduler's worker thread
+            subject.scheduler.release!
             subject.close
           end
       end
@@ -94,8 +96,14 @@ describe LogStash::Filters::Translate do
               file.puts("a,11\nb,12\nd,14\n") # changes a+b, removes c, adds d
             end
           end
-          .then_after(2, "translate again, ensuring we use the replacement dictionary") do
-
+          .then_after(1.2, "wait the scheduler load the new definition") do
+            try(5) do
+              flag_event = LogStash::Event.new("status" => "a" )
+              subject.filter(flag_event)
+              wait(0.5).for { flag_event.get("translation") }.to eq("11")
+            end
+          end
+          .then("translate again, ensuring we use the replacement dictionary") do
             event_a = LogStash::Event.new("status" => "a" )
             event_b = LogStash::Event.new("status" => "b" )
             event_c = LogStash::Event.new("status" => "c" )
@@ -109,6 +117,7 @@ describe LogStash::Filters::Translate do
             expect(event_d.get("translation")).to eq('14')
           end
           .then("stop") do
+            subject.scheduler.release!
             subject.close
           end
 
@@ -156,6 +165,7 @@ describe LogStash::Filters::Translate do
               expect(event_d.get("translation")).to be_nil
             end
             .then("stop") do
+              subject.scheduler.release!
               subject.close
             end
           actions.activate_quietly
@@ -185,6 +195,7 @@ describe LogStash::Filters::Translate do
             end
           end
           .then("stop") do
+            subject.scheduler.release!
             subject.close
           end
       end
@@ -235,6 +246,7 @@ describe LogStash::Filters::Translate do
             expect(event_d.get("translation")).to eq('14')
           end
           .then("stop") do
+            subject.scheduler.release!
             subject.close
           end
         actions.activate_quietly
@@ -280,6 +292,7 @@ describe LogStash::Filters::Translate do
               expect(event_d.get("translation")).to be_nil
             end
             .then("stop") do
+              subject.scheduler.release!
               subject.close
             end
           actions.activate_quietly
@@ -329,6 +342,7 @@ describe LogStash::Filters::Translate do
           wait(0.1).for{event.get("[translation]")}.not_to eq("foo"), "field [translation] should not be 'foo'"
         end
         .then("stop") do
+          subject.scheduler.release!
           subject.close
         end
     end
@@ -379,6 +393,7 @@ describe LogStash::Filters::Translate do
           wait(0.1).for{event.get("[translation]")}.not_to eq("foo"), "field [translation] should not be 'foo'"
         end
         .then("stop") do
+          subject.scheduler.release!
           subject.close
         end
     end
